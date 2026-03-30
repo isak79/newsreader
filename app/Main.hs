@@ -4,7 +4,6 @@ import Text.Feed.Import
 import Text.Feed.Query
 import Text.Feed.Types
 import Data.Text (Text)
-import qualified Data.Text as T
 
 type Title = Text
 type PubDate = String
@@ -23,7 +22,8 @@ toEntry i = do
   source  <- getItemLink i
   pure (title, source)
 
+entries :: Applicative f => Maybe Feed -> f [Maybe Entry]
 entries feed = do
   case feed of
     Nothing   -> pure []
-    Just feed ->  pure (map toEntry (feedItems feed))
+    Just fee ->  pure (map toEntry (feedItems fee))
