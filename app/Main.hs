@@ -1,5 +1,8 @@
 module Main where
 
+import ParseFeed (parseFeed)
+
 main :: IO ()
 main = do
-  print "hei"
+  f <- parseFeed
+  print f
