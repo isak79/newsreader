@@ -4,6 +4,7 @@ import Text.Feed.Import
 import Text.Feed.Query
 import Text.Feed.Types
 import Data.Text (Text)
+import qualified Data.Text as T
 
 type Title = Text
 type PubDate = String
@@ -12,13 +13,17 @@ type Entry = (Title, Source)
 
 main :: IO ()
 main = do
-  print "hei"
+  feed <- parseFeedFromFile "testdata/vgfeed"
+  entri <- entries feed
+  print entri
 
--- toEntry :: Item -> Maybe Entry
-toEntry i = (getItemTitle i, getItemLink i)
+toEntry :: Item -> Maybe Entry
+toEntry i = do
+  title <- getItemTitle i
+  source  <- getItemLink i
+  pure (title, source)
 
-contents = do
-  cont <- parseFeedFromFile "testdata/vgfeed"
-  case cont of
+entries feed = do
+  case feed of
     Nothing   -> pure []
     Just feed ->  pure (map toEntry (feedItems feed))
