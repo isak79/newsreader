@@ -7,14 +7,14 @@ import Text.Feed.Types
 type Title = String
 type PubDate = String
 type Source = String
-type Entry = (Title, Source, PubDate)
+type Entry = (Title, Source)
 
 main :: IO ()
 main = do
   print "hei"
 
-toEntry :: [Item] -> [Entry]
-toEntry i = (getItemTitle i, getItemLink i, getItemPublishDate i)
+-- toEntry :: Item -> Entry
+toEntry i = (getItemTitle i, getItemLink i)
 
 contents = do
   cont <- parseFeedFromFile "testdata/vgfeed"
