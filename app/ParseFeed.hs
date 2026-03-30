@@ -5,13 +5,14 @@ import Text.Feed.Query
 import Text.Feed.Types
 import Data.Text (Text)
 import Data.Time (UTCTime)
+import Data.Maybe (catMaybes)
 
 type Title = Text
 type Source = Text
 type PubTime = Maybe UTCTime
 type Entry = (Title, Source, PubTime)
 
-parseFeed :: IO [Maybe Entry]
+parseFeed :: IO [Entry]
 parseFeed = do
   feed <- parseFeedFromFile "testdata/vgfeed"
   entries feed
@@ -23,8 +24,8 @@ toEntry i = do
   pubTime <- getItemPublishDate i
   pure (title, source, pubTime)
 
-entries :: Applicative f => Maybe Feed -> f [Maybe Entry]
+entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
   case feed of
     Nothing   -> pure []
-    Just fee ->  pure (map toEntry (feedItems fee))
+    Just fee  ->  pure (catMaybes (map toEntry (feedItems fee)))
