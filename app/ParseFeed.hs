@@ -1,4 +1,4 @@
-module ParseFeed(parseFeed) where
+module ParseFeed(parseFeed, Entry) where
 
 import Text.Feed.Import
 import Text.Feed.Query
