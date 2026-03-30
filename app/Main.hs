@@ -3,17 +3,18 @@ module Main where
 import Text.Feed.Import
 import Text.Feed.Query
 import Text.Feed.Types
+import Data.Text (Text)
 
-type Title = String
+type Title = Text
 type PubDate = String
-type Source = String
+type Source = Text
 type Entry = (Title, Source)
 
 main :: IO ()
 main = do
   print "hei"
 
--- toEntry :: Item -> Entry
+-- toEntry :: Item -> Maybe Entry
 toEntry i = (getItemTitle i, getItemLink i)
 
 contents = do
