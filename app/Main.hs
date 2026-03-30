@@ -9,7 +9,4 @@ ui x = str x
 main :: IO ()
 main = do
   f <- parseFeed
-  -- case f of
-  -- Nothing   -> error "something went wrong"
-  -- Just feed -> simpleMain $ ui feed
-  print f
+  simpleMain $ ui f
