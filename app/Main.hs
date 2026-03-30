@@ -4,11 +4,12 @@ import Text.Feed.Import
 import Text.Feed.Query
 import Text.Feed.Types
 import Data.Text (Text)
+import Data.Time (UTCTime)
 
 type Title = Text
-type PubDate = String
 type Source = Text
-type Entry = (Title, Source)
+type PubTime = Maybe UTCTime
+type Entry = (Title, Source, PubTime)
 
 main :: IO ()
 main = do
@@ -20,7 +21,8 @@ toEntry :: Item -> Maybe Entry
 toEntry i = do
   title <- getItemTitle i
   source  <- getItemLink i
-  pure (title, source)
+  pubTime <- getItemPublishDate i
+  pure (title, source, pubTime)
 
 entries :: Applicative f => Maybe Feed -> f [Maybe Entry]
 entries feed = do

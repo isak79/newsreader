@@ -73,6 +73,7 @@ executable newsreader
 										, megaparsec
 										, brick
 										, feed
+										, time
 
     -- Directories containing source files.
     hs-source-dirs:   app
