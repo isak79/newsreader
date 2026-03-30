@@ -1,4 +1,4 @@
-module ParseFeed(parseFeed, Entry) where
+module ParseFeed(parseFeed) where
 
 import Text.Feed.Import
 import Text.Feed.Query
@@ -19,7 +19,7 @@ parseFeed = do
 
 toEntry :: Item -> Maybe Entry
 toEntry i = do
-  title <- getItemTitle i
+  title   <- getItemTitle i
   source  <- getItemLink i
   pubTime <- getItemPublishDate i
   pure (title, source, pubTime)

@@ -1,8 +1,7 @@
 module Main where
 
-import ParseFeed (parseFeed, Entry)
+import ParseFeed (parseFeed)
 import Brick
-import Data.Text (Text)
 
 ui :: String -> Widget ()
 ui x = str x
