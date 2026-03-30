@@ -1,6 +1,7 @@
 module Main where
 
 import Text.Feed.Import
+import Text.Feed.Query
 
 type Title = String
 type PubDate = String
@@ -9,5 +10,16 @@ type Entry = (Title, Source, PubDate)
 
 main :: IO ()
 main = do
-  contents <- parseFeedFromFile "testdata/vgfeed"
-  print contents
+  print "hei"
+
+contents = do
+  cont <- parseFeedFromFile "testdata/vgfeed"
+  case cont of
+    Nothing
+      -> pure []
+    (Just feed)
+      ->  do
+        items <- feedItems feed
+        pure items
+    
+
