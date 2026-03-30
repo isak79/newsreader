@@ -4,7 +4,7 @@ import ParseFeed (parseFeed)
 import Brick
 
 ui :: String -> Widget ()
-ui x = str x
+ui = str
 
 main :: IO ()
 main = do
