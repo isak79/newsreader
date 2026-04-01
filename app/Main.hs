@@ -2,6 +2,9 @@ module Main where
 
 import ParseFeed (parseFeed, Entry)
 import Brick
+import Brick.Widgets.Core
+import Brick.AttrMap
+import Graphics.Vty
 
 ui :: String -> Widget ()
 ui = str
@@ -9,6 +12,12 @@ ui = str
 main :: IO ()
 main = do
   tuiState <- buildState
+
+  let app = App { appAttrMap = const $ attrMap Graphics.Vty.defAttr [("general", fg blue)]
+                , appStartEvent=_appStartEvent
+                , appHandleEvent=_appHandleEvent
+                , appChooseCursor=_appChooseCursor
+                , appDraw = drawTui }
   print tuiState 
 
 data ResourceName = ResourceName
