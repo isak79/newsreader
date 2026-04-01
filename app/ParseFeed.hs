@@ -1,4 +1,4 @@
-module ParseFeed(parseFeed) where
+module ParseFeed(parseFeed, Entry) where
 
 import Text.Feed.Import
 import Text.Feed.Query
@@ -7,10 +7,10 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Maybe (catMaybes)
 
-type Title = Text
-type Source = Text
-type PubTime = Maybe UTCTime
-type Entry = (Title, Source, PubTime)
+data Entry = Entry { title :: Text
+                    , source :: Text
+                    , pubTime :: Maybe UTCTime } 
+                    deriving Show
 
 parseFeed :: IO [Entry]
 parseFeed = do
@@ -22,7 +22,7 @@ toEntry i = do
   title   <- getItemTitle i
   source  <- getItemLink i
   pubTime <- getItemPublishDate i
-  pure (title, source, pubTime)
+  pure Entry {title, source, pubTime}
 
 entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
