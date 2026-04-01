@@ -75,6 +75,7 @@ executable newsreader
 										, brick
 										, feed
 										, time
+										, vty
 
     -- Directories containing source files.
     hs-source-dirs:   app

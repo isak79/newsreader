@@ -28,4 +28,4 @@ entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
   case feed of
     Nothing   -> pure []
-    Just fee  ->  pure (catMaybes (map toEntry (feedItems fee)))
+    Just fee  -> pure (catMaybes (map toEntry (feedItems fee)))

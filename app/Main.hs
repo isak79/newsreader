@@ -8,14 +8,22 @@ ui = str
 
 main :: IO ()
 main = do
+  tuiState <- buildState
+  print tuiState 
+
+data ResourceName = ResourceName
+  deriving (Show, Eq, Ord)
+
+
+buildState = do
   entries <- parseFeed
-  simpleMain $ ui $ show entries
+  pure TuiState { entries }
 
 newtype TuiState = TuiState { entries :: [Entry] }
   deriving Show
 
-drawTui :: TuiState -> Widget String
-drawTui ts = [vBox $ map drawEntry $ entries]
+-- drawTui :: TuiState -> Widget String
+drawTui ts = [vBox $ map drawEntry $ entries ts]
 
 drawEntry :: Entry -> Widget n
-drawEntry e = str (show e.title ++ "\n" ++ show e.source ++ "\n")
+drawEntry e = str $ show e
