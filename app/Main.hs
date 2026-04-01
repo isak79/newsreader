@@ -12,8 +12,7 @@ ui = str
 main :: IO ()
 main = do
   tuiState <- buildState
-
-  let app = App { appAttrMap = const $ attrMap Graphics.Vty.defAttr [("general", fg blue)]
+  let app = App { appAttrMap = const $ attrMap Graphics.Vty.defAttr [(someAttrName, fg blue)]
                 , appStartEvent=_appStartEvent
                 , appHandleEvent=_appHandleEvent
                 , appChooseCursor=_appChooseCursor
