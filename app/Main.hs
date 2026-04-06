@@ -70,7 +70,8 @@ setSelectedEntry i t = t { selectedEntry = i }
 changeEntry :: Int -> EventM ResourceName TuiState ()
 changeEntry i = do
   sEntry <- gets selectedEntry 
-  modify $ setSelectedEntry $ sEntry + i
+  entries <- gets entries
+  modify $ setSelectedEntry $ (sEntry + i) `mod` length entries
   
 
 data TuiState = TuiState { entries :: [Entry]
