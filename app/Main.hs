@@ -7,17 +7,20 @@ import Brick
 -- import Brick.Types (BrickEvent(..))
 import qualified Graphics.Vty as V
 import qualified Data.Text as T
+import Brick.Widgets.Border
 
 ui :: String -> Widget ()
 ui = str
 
-generalAttr :: AttrName
-generalAttr = attrName "general"
+titleAttr, sourceAttr, timeAttr :: AttrName
+titleAttr = attrName "title"
+sourceAttr = attrName "source"
+timeAttr = attrName "time"
 
 main :: IO ()
 main = do
   tuiState <- buildState
-  let app = App { appAttrMap      = const $ attrMap V.defAttr [(generalAttr, fg V.blue)]
+  let app = App { appAttrMap      = const $ attrMap V.defAttr [(titleAttr, fg V.blue), (sourceAttr, fg V.yellow)]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent 
                 , appChooseCursor = neverShowCursor
@@ -45,4 +48,7 @@ drawTui :: TuiState -> [Widget n]
 drawTui ts = [vBox $ map drawEntry $ entries ts]
 
 drawEntry :: Entry -> Widget n
-drawEntry e = withAttr generalAttr $ str $ T.unpack (title e)
+drawEntry e = border $ vBox $ (drawField (title e) titleAttr) : (drawField (source e) sourceAttr) : []
+
+drawField :: T.Text -> AttrName -> Widget n
+drawField t a = withAttr a $ str $ T.unpack t
