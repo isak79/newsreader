@@ -9,9 +9,8 @@ import qualified Graphics.Vty as V
 import qualified Data.Text as T
 import Brick.Widgets.Border
 -- import Brick.Widgets.Border.Style
-
-ui :: String -> Widget ()
-ui = str
+import System.Process (callProcess)
+import Control.Monad.IO.Class (liftIO)
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -37,7 +36,19 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = halt
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = changeEntry 1
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = changeEntry (-1)
+handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = openSelectedUrl
 handleTuiEvent _                                     = pure ()
+
+openSelectedUrl = do
+  sEntry <- gets selectedEntry
+  ents   <- gets entries
+  let curr = ents !! sEntry 
+  liftIO $ openUrl $ T.unpack $ source curr
+  pure ()
+
+
+openUrl :: String -> IO ()
+openUrl url = callProcess "open" [url]
 
 data ResourceName = ResourceName
   deriving (Show, Eq, Ord)

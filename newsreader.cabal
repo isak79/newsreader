@@ -33,6 +33,7 @@ executable newsreader
 										, time
 										, vty
 										, microlens-mtl
+										, process
 
     -- Directories containing source files.
     hs-source-dirs:   app
