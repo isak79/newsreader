@@ -8,12 +8,12 @@ import Brick
 import qualified Graphics.Vty as V
 import qualified Data.Text as T
 import Brick.Widgets.Border
-import Brick.Widgets.Border.Style
+-- import Brick.Widgets.Border.Style
 
 ui :: String -> Widget ()
 ui = str
 
-titleAttr, sourceAttr, timeAttr :: AttrName
+titleAttr, sourceAttr, timeAttr, normalBorder, selectedBorder :: AttrName
 titleAttr = attrName "title"
 sourceAttr = attrName "source"
 timeAttr = attrName "time"
@@ -37,6 +37,8 @@ main = do
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = halt
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = nextEntry 1
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = nextEntry (-1)
 handleTuiEvent _                                     = pure ()
 
 data ResourceName = ResourceName
@@ -50,10 +52,10 @@ buildState = do
 setSelectedEntry :: Integer -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
 
--- nextEntry :: State TuiState ()
-nextEntry t = do
+nextEntry :: Integer -> EventM ResourceName TuiState ()
+nextEntry i = do
   sEntry <- gets selectedEntry 
-  modify $ setSelectedEntry $ sEntry + 1
+  modify $ setSelectedEntry $ sEntry + i
   
 
 data TuiState = TuiState { entries :: [Entry]
