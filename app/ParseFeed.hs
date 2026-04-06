@@ -1,4 +1,4 @@
-module ParseFeed(parseFeed, Entry) where
+module ParseFeed(parseFeed, Entry(..)) where
 
 import Text.Feed.Import
 import Text.Feed.Query
@@ -7,7 +7,7 @@ import Data.Text (Text)
 import Data.Time (UTCTime)
 import Data.Maybe (catMaybes)
 
-data Entry = Entry { title :: Text
+data Entry = Entry {  title :: Text
                     , source :: Text
                     , pubTime :: Maybe UTCTime } 
                     deriving Show

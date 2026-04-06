@@ -1,6 +1,6 @@
 module Main where
 
-import ParseFeed (parseFeed, Entry)
+import ParseFeed (parseFeed, Entry(..))
 import Brick 
 import Brick.Widgets.Core
 import Brick.AttrMap
@@ -40,4 +40,4 @@ newtype TuiState = TuiState { entries :: [Entry] }
 drawTui ts = [vBox $ map drawEntry $ entries ts]
 
 drawEntry :: Entry -> Widget n
-drawEntry e = str $ show e
+drawEntry e = str $ show (title e)
