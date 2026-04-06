@@ -11,6 +11,7 @@ import Brick.Widgets.Border
 -- import Brick.Widgets.Border.Style
 import System.Process (callProcess)
 import Control.Monad.IO.Class (liftIO)
+import System.Info
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -49,7 +50,11 @@ openSelectedUrl = do
 
 
 openUrl :: String -> IO ()
-openUrl url = callProcess "open" [url]
+openUrl url = case os of
+  "darwin"  -> callProcess "open" [url]
+  "linux"   -> callProcess "xdg-open" [url]
+  "mingw32" -> callProcess "cmd" ["/c", "start", "", url] 
+  _         -> putStrLn $ "open manually: " ++ url
 
 data ResourceName = ResourceName
   deriving (Show, Eq, Ord)
