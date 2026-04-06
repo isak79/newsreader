@@ -58,17 +58,17 @@ buildState = do
   entries <- parseFeed
   pure TuiState { entries, selectedEntry = 0 }
 
-setSelectedEntry :: Integer -> TuiState -> TuiState
+setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
 
-changeEntry :: Integer -> EventM ResourceName TuiState ()
+changeEntry :: Int -> EventM ResourceName TuiState ()
 changeEntry i = do
   sEntry <- gets selectedEntry 
   modify $ setSelectedEntry $ sEntry + i
   
 
 data TuiState = TuiState { entries :: [Entry]
-                         , selectedEntry :: Integer }
+                         , selectedEntry :: Int }
   deriving Show
 
 drawTui :: TuiState -> [Widget n]
