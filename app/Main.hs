@@ -6,6 +6,7 @@ import Brick.Widgets.Core
 import Brick.AttrMap
 import Brick.Types (BrickEvent(..))
 import qualified Graphics.Vty as V
+import qualified Data.Text as T
 
 ui :: String -> Widget ()
 ui = str
@@ -24,8 +25,8 @@ main = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))       = halt
-handleTuiEvent _                                    = pure ()
+handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = halt
+handleTuiEvent _                                     = pure ()
 
 data ResourceName = ResourceName
   deriving (Show, Eq, Ord)
@@ -40,4 +41,4 @@ newtype TuiState = TuiState { entries :: [Entry] }
 drawTui ts = [vBox $ map drawEntry $ entries ts]
 
 drawEntry :: Entry -> Widget n
-drawEntry e = str $ show (title e)
+drawEntry e = str $ T.unpack (title e)
