@@ -31,9 +31,9 @@ main = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = halt
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = changeEntry 1
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = changeEntry (-1)
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = openSelectedUrl
 handleTuiEvent _                                     = pure ()
 
@@ -59,7 +59,7 @@ data ResourceName = ResourceName
 buildState :: IO TuiState
 buildState = do
   entries <- parseFeed
-  pure TuiState { entries, selectedEntry = 0 }
+  pure TuiState { entries, selectedEntry = 0, showDesc = False }
 
 setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
@@ -69,17 +69,36 @@ changeEntry i = do
   sEntry <- gets selectedEntry 
   entries <- gets entries
   modify $ setSelectedEntry $ (sEntry + i) `mod` length entries
+
+setShowDesc :: Bool -> TuiState -> TuiState
+setShowDesc b t = t { showDesc = b }
+
+
+changeShowDesc :: EventM ResourceName TuiState ()
+changeShowDesc = do
+  prev <- gets showDesc 
+  modify $ setShowDesc $ not prev
   
 
 data TuiState = TuiState { entries :: [Entry]
-                         , selectedEntry :: Int }
+                         , selectedEntry :: Int 
+                         , showDesc :: Bool }
   deriving Show
 
 drawTui :: TuiState -> [Widget ResourceName]
-drawTui ts = [viewport ResourceName Vertical $ vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [0,1..] )]
+drawTui ts = [viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..] )]
 
-drawEntry :: Eq a => a -> (Entry, a) -> Widget n
-drawEntry selected (e,n) =  toView $ padRight Max $ vBox [hBox [drawField (title e) a, padLeft Max $ withAttr b $ drawTime (pubTime e)], drawField (source e) sourceAttr]
+drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
+drawEntry showDesc selected (e,n) =  
+  toView $ padRight Max $ vBox 
+      [
+        hBox [
+              drawField (title e) a 
+            , padLeft Max $ withAttr b $ drawTime (pubTime e) 
+            ]
+      , desc
+      , drawField (source e) sourceAttr
+      ]
   where 
     current = selected == n
     a :: AttrName
@@ -91,6 +110,8 @@ drawEntry selected (e,n) =  toView $ padRight Max $ vBox [hBox [drawField (title
     drawTime :: Maybe UTCTime -> Widget n
     drawTime Nothing  = emptyWidget 
     drawTime (Just t) = str $ show t
+    desc :: Widget n
+    desc = if showDesc && current then str $ T.unpack $ description e else emptyWidget 
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ str $ T.unpack t
