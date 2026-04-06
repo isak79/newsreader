@@ -9,6 +9,7 @@ import System.Process (callProcess)
 import Control.Monad.IO.Class (liftIO)
 import System.Info
 import Data.Time (UTCTime)
+import Data.Maybe (fromJust)
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -111,7 +112,10 @@ drawEntry showDesc selected (e,n) =
     drawTime Nothing  = emptyWidget 
     drawTime (Just t) = str $ show t
     desc :: Widget n
-    desc = if showDesc && current then str $ T.unpack $ description e else emptyWidget 
+    desc = if showDesc && current && hasDescription then str $ T.unpack $ fromJust $ description e else emptyWidget 
+    hasDescription = case description e of
+      Nothing -> False
+      Just _  -> True
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ str $ T.unpack t

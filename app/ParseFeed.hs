@@ -10,7 +10,7 @@ import Data.Maybe (mapMaybe)
 data Entry = Entry {  title :: T.Text
                     , source :: T.Text
                     , pubTime :: Maybe UTCTime
-                    , description :: T.Text }
+                    , description :: Maybe T.Text }
                     deriving Show
 
 parseFeed :: IO [Entry]
@@ -22,7 +22,7 @@ toEntry :: Item -> Maybe Entry
 toEntry i = do
   title0      <- getItemTitle i
   source0     <- getItemLink i
-  description <- getItemDescription i
+  let description = getItemDescription i
   pubTime     <- getItemPublishDate i
   let title  = T.strip title0
       source = cleanUrl source0
