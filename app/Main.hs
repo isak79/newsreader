@@ -39,6 +39,7 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = changeEntry (-1)
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = openSelectedUrl
 handleTuiEvent _                                     = pure ()
 
+openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
   sEntry <- gets selectedEntry
   ents   <- gets entries
