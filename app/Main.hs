@@ -78,14 +78,17 @@ data TuiState = TuiState { entries :: [Entry]
                          , selectedEntry :: Int }
   deriving Show
 
-drawTui :: TuiState -> [Widget n]
-drawTui ts = [vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [0,1..] )]
+drawTui :: TuiState -> [Widget ResourceName]
+drawTui ts = [viewport ResourceName Vertical $ vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [0,1..] )]
 
 drawEntry :: Eq a => a -> (Entry, a) -> Widget n
-drawEntry selected (e,n) =  border $ vBox [drawField (title e) a, drawField (source e) sourceAttr]
+drawEntry selected (e,n) =  toView $ vBox [drawField (title e) a, drawField (source e) sourceAttr]
   where 
+    current = selected == n
     a :: AttrName
-    a = if selected == n then selectedTitleAttr else titleAttr 
+    a = if current then selectedTitleAttr else titleAttr 
+    toView :: Widget n -> Widget n
+    toView = if current then visible . border else border
     
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ str $ T.unpack t
