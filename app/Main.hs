@@ -12,6 +12,7 @@ import Brick.Widgets.Border
 import System.Process (callProcess)
 import Control.Monad.IO.Class (liftIO)
 import System.Info
+import Data.Time (UTCTime(UTCTime))
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -82,13 +83,16 @@ drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts = [viewport ResourceName Vertical $ vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [0,1..] )]
 
 drawEntry :: Eq a => a -> (Entry, a) -> Widget n
-drawEntry selected (e,n) =  toView $ padRight Max $ vBox [drawField (title e) a, drawField (source e) sourceAttr]
+drawEntry selected (e,n) =  toView $ padRight Max $ vBox [drawField (title e) a, drawField (source e) sourceAttr, drawTime (pubTime e)]
   where 
     current = selected == n
     a :: AttrName
     a = if current then selectedTitleAttr else titleAttr 
     toView :: Widget n -> Widget n
     toView = if current then visible . border else border
-    
+    drawTime :: Maybe UTCTime -> Widget n
+    drawTime Nothing  = emptyWidget 
+    drawTime (Just t) = str $ show t
+
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ str $ T.unpack t
