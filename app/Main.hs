@@ -23,7 +23,7 @@ main :: IO ()
 main = do
   tuiState <- buildState
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (titleAttr, fg V.blue)
-                                                              , (selectedTitleAttr, fg V.cyan)
+                                                              , (selectedTitleAttr, fg V.green)
                                                               , (sourceAttr, fg V.yellow) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
@@ -45,7 +45,7 @@ data ResourceName = ResourceName
 buildState :: IO TuiState
 buildState = do
   entries <- parseFeed
-  pure TuiState { entries, selectedEntry = 1 }
+  pure TuiState { entries, selectedEntry = 0 }
 
 setSelectedEntry :: Integer -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
@@ -61,15 +61,13 @@ data TuiState = TuiState { entries :: [Entry]
   deriving Show
 
 drawTui :: TuiState -> [Widget n]
-drawTui ts = [vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [1,2..] )]
+drawTui ts = [vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [0,1..] )]
 
--- drawEntry :: Entry -> Widget n
+drawEntry :: Eq a => a -> (Entry, a) -> Widget n
 drawEntry selected (e,n) =  border $ vBox [drawField (title e) a, drawField (source e) sourceAttr]
   where 
     a :: AttrName
     a = if selected == n then selectedTitleAttr else titleAttr 
     
-
-
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ str $ T.unpack t
