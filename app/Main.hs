@@ -83,11 +83,13 @@ drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts = [viewport ResourceName Vertical $ vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [0,1..] )]
 
 drawEntry :: Eq a => a -> (Entry, a) -> Widget n
-drawEntry selected (e,n) =  toView $ padRight Max $ vBox [hBox [drawField (title e) a, padLeft Max $ drawTime (pubTime e)], drawField (source e) sourceAttr]
+drawEntry selected (e,n) =  toView $ padRight Max $ vBox [hBox [drawField (title e) a, padLeft Max $ withAttr b $ drawTime (pubTime e)], drawField (source e) sourceAttr]
   where 
     current = selected == n
     a :: AttrName
     a = if current then selectedTitleAttr else titleAttr 
+    b :: AttrName
+    b = if current then selectedTitleAttr else timeAttr
     toView :: Widget n -> Widget n
     toView = if current then visible . border else border
     drawTime :: Maybe UTCTime -> Widget n
