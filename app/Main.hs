@@ -2,17 +2,13 @@ module Main where
 
 import ParseFeed (parseFeed, Entry(..))
 import Brick
--- import Brick.Widgets.Core
--- import Brick.AttrMap
--- import Brick.Types (BrickEvent(..))
 import qualified Graphics.Vty as V
 import qualified Data.Text as T
 import Brick.Widgets.Border
--- import Brick.Widgets.Border.Style
 import System.Process (callProcess)
 import Control.Monad.IO.Class (liftIO)
 import System.Info
-import Data.Time (UTCTime(UTCTime))
+import Data.Time (UTCTime)
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
