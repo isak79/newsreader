@@ -1,10 +1,11 @@
 module Main where
 
 import ParseFeed (parseFeed, Entry)
-import Brick
+import Brick 
 import Brick.Widgets.Core
 import Brick.AttrMap
-import Graphics.Vty
+import Brick.Types (BrickEvent(..))
+import qualified Graphics.Vty as V
 
 ui :: String -> Widget ()
 ui = str
@@ -12,16 +13,22 @@ ui = str
 main :: IO ()
 main = do
   tuiState <- buildState
-  let app = App { appAttrMap = const $ attrMap Graphics.Vty.defAttr [(someAttrName, fg blue)]
-                , appStartEvent=_appStartEvent
-                , appHandleEvent=_appHandleEvent
-                , appChooseCursor=_appChooseCursor
-                , appDraw = drawTui }
-  print tuiState 
+  let generalAttr = attrName "general"
+  let app = App { appAttrMap      = const $ attrMap V.defAttr [(generalAttr, fg V.blue)]
+                , appStartEvent   = return ()
+                , appHandleEvent  = handleTuiEvent 
+                , appChooseCursor = neverShowCursor
+                , appDraw         = drawTui }
+  _ <- defaultMain app tuiState 
+  pure () 
+
+handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
+handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))       = halt
+handleTuiEvent _                                    = pure ()
 
 data ResourceName = ResourceName
   deriving (Show, Eq, Ord)
-
 
 buildState = do
   entries <- parseFeed
@@ -30,7 +37,6 @@ buildState = do
 newtype TuiState = TuiState { entries :: [Entry] }
   deriving Show
 
--- drawTui :: TuiState -> Widget String
 drawTui ts = [vBox $ map drawEntry $ entries ts]
 
 drawEntry :: Entry -> Widget n
