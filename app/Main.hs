@@ -13,20 +13,18 @@ import Brick.Widgets.Border
 ui :: String -> Widget ()
 ui = str
 
-titleAttr, sourceAttr, timeAttr, normalBorder, selectedBorder :: AttrName
+titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
+selectedTitleAttr = attrName "selectedTitle"
 sourceAttr = attrName "source"
 timeAttr = attrName "time"
-normalBorder = attrName "border"
-selectedBorder = attrName "selBorder"
 
 main :: IO ()
 main = do
   tuiState <- buildState
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (titleAttr, fg V.blue)
-                                                              , (sourceAttr, fg V.yellow)
-                                                              , (normalBorder, fg V.white)
-                                                              , (selectedBorder, bg V.cyan)]
+                                                              , (selectedTitleAttr, fg V.cyan)
+                                                              , (sourceAttr, fg V.yellow) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
@@ -37,8 +35,8 @@ main = do
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = nextEntry 1
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = nextEntry (-1)
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = changeEntry 1
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = changeEntry (-1)
 handleTuiEvent _                                     = pure ()
 
 data ResourceName = ResourceName
@@ -47,13 +45,13 @@ data ResourceName = ResourceName
 buildState :: IO TuiState
 buildState = do
   entries <- parseFeed
-  pure TuiState { entries, selectedEntry = 2 }
+  pure TuiState { entries, selectedEntry = 1 }
 
 setSelectedEntry :: Integer -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
 
-nextEntry :: Integer -> EventM ResourceName TuiState ()
-nextEntry i = do
+changeEntry :: Integer -> EventM ResourceName TuiState ()
+changeEntry i = do
   sEntry <- gets selectedEntry 
   modify $ setSelectedEntry $ sEntry + i
   
@@ -66,10 +64,10 @@ drawTui :: TuiState -> [Widget n]
 drawTui ts = [vBox $ map (drawEntry (selectedEntry ts)) (zip (entries ts) [1,2..] )]
 
 -- drawEntry :: Entry -> Widget n
-drawEntry selected (e,n) =  border $ withAttr a $ vBox [drawField (title e) titleAttr, drawField (source e) sourceAttr]
+drawEntry selected (e,n) =  border $ vBox [drawField (title e) a, drawField (source e) sourceAttr]
   where 
     a :: AttrName
-    a = if selected == n then selectedBorder else normalBorder 
+    a = if selected == n then selectedTitleAttr else titleAttr 
     
 
 
