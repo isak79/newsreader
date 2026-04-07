@@ -15,7 +15,7 @@ data Entry = Entry {  title :: T.Text
 
 parseFeed :: IO [Entry]
 parseFeed = do
-  feed <- fetchFeed 
+  feed <- fetchFeed "https://www.vg.no/rss/feed/?format=rss"
   entries feed
 
 toEntry :: Item -> Maybe Entry

@@ -6,13 +6,13 @@ import Text.Feed.Types
 import           Network.HTTP.Simple
 import qualified Data.ByteString.Lazy.Char8 as L8
 
-fetchBytes :: IO L8.ByteString
-fetchBytes = do
-  req <- parseRequest "https://www.vg.no/rss/feed/?format=rss"
+fetchBytes :: String -> IO L8.ByteString
+fetchBytes url = do
+  req <- parseRequest url
   resp <- httpLBS req
   putStrLn $ "Status: " ++ show (getResponseStatusCode resp)
   pure (getResponseBody resp)
 
-fetchFeed :: IO (Maybe Feed)
-fetchFeed = do
-  fmap parseFeedSource fetchBytes 
+fetchFeed :: String -> IO (Maybe Feed)
+fetchFeed url = do
+  parseFeedSource <$> fetchBytes url
