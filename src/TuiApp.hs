@@ -10,6 +10,7 @@ import Control.Monad.IO.Class (liftIO)
 import System.Info
 import Data.Time (UTCTime)
 import Data.Maybe (fromJust)
+import Brick.Widgets.Center (hCenter, hCenterLayer)
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -119,13 +120,23 @@ drawTui ts
       mainEntries = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
-drawHelp =  border $ hBox 
+drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ hBox 
               [
                 padRight Max $ vBox [
-                  str "goToTop"
+                  hCenter $ str "g",
+                  padTop (Pad 1) $ hCenter $ str "G",
+                  padTop (Pad 1) $ hCenter $ str "<enter>",
+                  padTop (Pad 1) $ hCenter $ str "j",
+                  padTop (Pad 1) $ hCenter $ str "k",
+                  padTop (Pad 1) $ hCenter $ str "?"
                 ], 
                 vBox [
-                  str "g"
+                  hCenter $ str "goToTop",
+                  padTop (Pad 1) $ hCenter $ str "goToBottom",
+                  padTop (Pad 1) $ hCenter $ str "goToSource",
+                  padTop (Pad 1) $ hCenter $ str "nextEntry",
+                  padTop (Pad 1) $ hCenter $ str "prevEntry",
+                  padTop (Pad 1) $ hCenter $ str "toggleHelp"
                 ]
               ]
 
