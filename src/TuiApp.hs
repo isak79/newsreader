@@ -37,6 +37,7 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = modifyEntry (-1)
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = openSelectedUrl
 handleTuiEvent _                                     = pure ()
 
@@ -59,10 +60,21 @@ openUrl url = case os of
 data ResourceName = ResourceName
   deriving (Show, Eq, Ord)
 
+toggleShowHelp :: EventM ResourceName TuiState ()
+toggleShowHelp = do
+  sh <- gets showHelp
+  modify $ setShowHelp $ not sh
+
+setShowHelp :: Bool -> TuiState -> TuiState
+setShowHelp b t = t { showHelp = b}
+
 buildState :: IO TuiState
 buildState = do
   entries <- parseFeed
-  pure TuiState { entries, selectedEntry = 0, showDesc = False }
+  pure TuiState { entries
+                , selectedEntry = 0
+                , showDesc = False 
+                , showHelp = False }
 
 setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
@@ -95,11 +107,27 @@ changeShowDesc = do
 
 data TuiState = TuiState { entries :: [Entry]
                          , selectedEntry :: Int 
-                         , showDesc :: Bool }
+                         , showDesc :: Bool 
+                         , showHelp :: Bool }
   deriving Show
 
 drawTui :: TuiState -> [Widget ResourceName]
-drawTui ts = [viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])]
+drawTui ts 
+  | showHelp ts = [drawHelp, mainEntries]
+  | otherwise   = [mainEntries]
+    where
+      mainEntries = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
+
+drawHelp :: Widget n
+drawHelp =  border $ hBox 
+              [
+                padRight Max $ vBox [
+                  str "goToTop"
+                ], 
+                vBox [
+                  str "g"
+                ]
+              ]
 
 drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
 drawEntry showDesc selected (e,n) =  
