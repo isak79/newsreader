@@ -145,18 +145,14 @@ data TuiState = TuiState { entries       :: [Entry]
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
-  | showHelp ts = [drawHelp box , drawMain ts]
-  | otherwise   = [if box then drawMailBox ts else drawHome ts]
+  | showHelp ts = [drawHelp box , toDraw]
+  | otherwise   = [toDraw]
     where
       box = case inMailbox ts of
         Box _ -> True
         _     -> False
+      toDraw = if box then drawMailBox ts else drawHome ts
       
-
-drawMain :: TuiState -> Widget ResourceName
-drawMain ts = case (inMailbox ts) of
-  None  -> drawHome ts
-  Box _ -> drawMailBox ts
 
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip (mailBoxes ts) [0,1..])
