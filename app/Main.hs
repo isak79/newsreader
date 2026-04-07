@@ -32,9 +32,11 @@ main = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = changeEntry 1
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = changeEntry (-1)
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = modifyEntry 1
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = modifyEntry (-1)
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = openSelectedUrl
 handleTuiEvent _                                     = pure ()
 
@@ -65,11 +67,21 @@ buildState = do
 setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
 
-changeEntry :: Int -> EventM ResourceName TuiState ()
-changeEntry i = do
+modifyEntry :: Int -> EventM ResourceName TuiState ()
+modifyEntry i = do
   sEntry <- gets selectedEntry 
   entries <- gets entries
-  modify $ setSelectedEntry $ (sEntry + i) `mod` length entries
+  modify $ setSelectedEntry $ if (sEntry + i) < length entries && (sEntry + i) >= 0 then sEntry + i else sEntry 
+
+goToTop :: EventM ResourceName TuiState ()
+goToTop = do
+  modify $ setSelectedEntry 0
+
+
+goToBottom :: EventM ResourceName TuiState ()
+goToBottom = do
+  entries <- gets entries
+  modify $ setSelectedEntry $ length entries - 1
 
 setShowDesc :: Bool -> TuiState -> TuiState
 setShowDesc b t = t { showDesc = b }
