@@ -53,9 +53,12 @@ changeInMailBox mb = do
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
   inMailbox    <- gets inMailbox
-  mailBoxes    <- gets mailBoxes 
-  selectedItem <- gets selectedItem 
-  if inMailbox == None then changeInMailBox (Box (mailBoxes !! selectedItem)) else openSelectedUrl 
+  case inMailbox of
+    None -> do
+      mailBoxes    <- gets mailBoxes 
+      selectedItem <- gets selectedItem 
+      changeInMailBox (Box (mailBoxes !! selectedItem))
+    _    -> openSelectedUrl 
 
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
@@ -127,7 +130,7 @@ changeShowDesc = do
   
 
 data MailBox x = Box x | None
-  deriving Eq
+  deriving (Eq, Show)
 
 
 data TuiState = TuiState { entries       :: [Entry]
@@ -161,7 +164,7 @@ drawMailBoxEntry selected (st,n) = border $ padRight Max $ withAttr a $ str st
 
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
+drawMailBox ts = viewport ResourceName Vertical $ borderWithLabel (str $ show (inMailbox ts)) $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
