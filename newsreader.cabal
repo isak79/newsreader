@@ -40,6 +40,8 @@ executable newsreader
 										, bytestring
 										, http-client
 										, http-client-tls
+										, selda
+										, selda-sqlite
 
     -- Directories containing source files.
     hs-source-dirs:   app
