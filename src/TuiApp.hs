@@ -183,7 +183,7 @@ drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
 
 drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
 drawEntry showDesc selected (e,n) =  
-  toView $ padRight Max $ vBox 
+  toView $ border $ padRight Max $ vBox 
       [
         hBox [
               drawField (title e) a 
@@ -199,7 +199,7 @@ drawEntry showDesc selected (e,n) =
     b :: AttrName
     b = if current then selectedTitleAttr else timeAttr
     toView :: Widget n -> Widget n
-    toView = if current then visible . border else border
+    toView = if current then visible else id
     drawTime :: Maybe UTCTime -> Widget n
     drawTime Nothing  = emptyWidget 
     drawTime (Just t) = str $ show t
