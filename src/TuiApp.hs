@@ -123,22 +123,22 @@ drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ hBox 
               [
                 padRight Max $ vBox [
-                  hCenter $ str "g",
-                  padTop (Pad 1) $ hCenter $ str "G",
-                  padTop (Pad 1) $ hCenter $ str "<enter>",
-                  padTop (Pad 1) $ hCenter $ str "j",
-                  padTop (Pad 1) $ hCenter $ str "k",
-                  padTop (Pad 1) $ hCenter $ str "d",
-                  padTop (Pad 1) $ hCenter $ str "?"
+                   hCenter $ str "g",
+                   hCenter $ str "G",
+                   hCenter $ str "<enter>",
+                   hCenter $ str "j",
+                   hCenter $ str "k",
+                   hCenter $ str "d",
+                   hCenter $ str "?"
                 ], 
                 vBox [
-                  hCenter $ str "goToTop",
-                  padTop (Pad 1) $ hCenter $ str "goToBottom",
-                  padTop (Pad 1) $ hCenter $ str "goToSource",
-                  padTop (Pad 1) $ hCenter $ str "nextEntry",
-                  padTop (Pad 1) $ hCenter $ str "prevEntry",
-                  padTop (Pad 1) $ hCenter $ str "toggleDescription",
-                  padTop (Pad 1) $ hCenter $ str "toggleHelp"
+                   hCenter $ str "goToTop",
+                   hCenter $ str "goToBottom",
+                   hCenter $ str "goToSource",
+                   hCenter $ str "nextEntry",
+                   hCenter $ str "prevEntry",
+                   hCenter $ str "toggleDescription",
+                   hCenter $ str "toggleHelp"
                 ]
               ]
 
