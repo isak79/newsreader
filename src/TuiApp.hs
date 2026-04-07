@@ -128,10 +128,10 @@ drawMain ts = case (inMailbox ts) of
   Box _ -> drawMailBox ts
 
 drawHome :: TuiState -> Widget ResourceName
-drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip ["VG","NYT"] [1,2..])
+drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip ["VG","NYT"] [0,1..])
 
 
--- drawMailBoxEntry :: TuiState -> Widget ResourceName
+drawMailBoxEntry :: Eq b => b -> (String, b) -> Widget n
 drawMailBoxEntry selected (st,n) = border $ padRight Max $ withAttr a $ str st
   where 
     current = selected == n
