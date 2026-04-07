@@ -15,7 +15,7 @@ data Entry = Entry {  title :: T.Text
 
 parseFeed :: IO [Entry]
 parseFeed = do
-  feed <- parseFeedFromFile "testdata/vgfeed"
+  feed <- parseFeedFromFile "testdata/nytimesfeed"
   entries feed
 
 toEntry :: Item -> Maybe Entry

@@ -109,7 +109,7 @@ drawEntry showDesc selected (e,n) =
               drawField (title e) a 
             , padLeft Max $ withAttr b $ drawTime (pubTime e) 
             ]
-      , desc
+      , padRight (Pad 30) $ padTop (Pad 1) $ padBottom (Pad 1) desc
       , drawField (source e) sourceAttr
       ]
   where 
@@ -124,7 +124,7 @@ drawEntry showDesc selected (e,n) =
     drawTime Nothing  = emptyWidget 
     drawTime (Just t) = str $ show t
     desc :: Widget n
-    desc = if showDesc && current && hasDescription then str $ T.unpack $ fromJust $ description e else emptyWidget 
+    desc = if showDesc && current && hasDescription then txtWrap $ fromJust $ description e else emptyWidget 
     hasDescription = case description e of
       Nothing -> False
       Just _  -> True
