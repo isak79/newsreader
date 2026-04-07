@@ -114,10 +114,12 @@ data TuiState = TuiState { entries :: [Entry]
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
-  | showHelp ts = [drawHelp, mainEntries]
-  | otherwise   = [mainEntries]
-    where
-      mainEntries = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
+  | showHelp ts = [drawHelp, drawEntries ts]
+  | otherwise   = [drawEntries ts]
+      
+
+drawEntries :: TuiState -> Widget ResourceName
+drawEntries ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
