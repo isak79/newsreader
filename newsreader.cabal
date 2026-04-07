@@ -24,6 +24,7 @@ executable newsreader
 
     other-modules:    ParseFeed
 										, TuiApp
+										, FetchFeed
 
 
     build-depends:    base ^>=4.18.3.0
@@ -35,6 +36,10 @@ executable newsreader
 										, vty
 										, microlens-mtl
 										, process
+										, http-conduit
+										, bytestring
+										, http-client
+										, http-client-tls
 
     -- Directories containing source files.
     hs-source-dirs:   app
