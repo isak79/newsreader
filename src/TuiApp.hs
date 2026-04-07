@@ -123,8 +123,8 @@ drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
               hBox 
                 [padRight Max $ 
-                    vBox [hCenter $ str x| x <- ["g", "G", "<enter>", "j", "k", "d", "?"] ], 
-                    vBox [hCenter $ str x| x <- ["goToTop","goToBottom","goToSource","nextEntry","prevEntry","toggleDescription","toggleHelp"] ] 
+                    vBox [hCenter $ str x | x <- ["g", "G", "<enter>", "j", "k", "d", "?"]], 
+                    vBox [hCenter $ str x | x <- ["goToTop","goToBottom","goToSource","nextEntry","prevEntry","toggleDescription","toggleHelp"]]
                 ]
 
 drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
