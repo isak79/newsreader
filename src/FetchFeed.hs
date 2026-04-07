@@ -1,11 +1,12 @@
-module FetchFeed where
 {-# LANGUAGE OverloadedStrings #-}
+module FetchFeed where
 
-import qualified Data.ByteString.Lazy.Char8 as L8
 import           Network.HTTP.Simple
-import qualified Data.ByteString.Builder as L8
-import Network.HTTP.Client.Conduit
+import qualified Data.ByteString.Lazy.Char8 as L8
 
+fetch :: IO ()
 fetch = do
-  initReq      <- parseRequest "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
-  httpJSON initReq
+  req <- parseRequest "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+  resp <- httpLBS req
+  putStrLn $ "Status: " ++ show (getResponseStatusCode resp)
+  L8.putStrLn (getResponseBody resp)
