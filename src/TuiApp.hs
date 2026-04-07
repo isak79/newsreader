@@ -120,27 +120,12 @@ drawTui ts
       mainEntries = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
-drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ hBox 
-              [
-                padRight Max $ vBox [
-                   hCenter $ str "g",
-                   hCenter $ str "G",
-                   hCenter $ str "<enter>",
-                   hCenter $ str "j",
-                   hCenter $ str "k",
-                   hCenter $ str "d",
-                   hCenter $ str "?"
-                ], 
-                vBox [
-                   hCenter $ str "goToTop",
-                   hCenter $ str "goToBottom",
-                   hCenter $ str "goToSource",
-                   hCenter $ str "nextEntry",
-                   hCenter $ str "prevEntry",
-                   hCenter $ str "toggleDescription",
-                   hCenter $ str "toggleHelp"
+drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
+              hBox 
+                [padRight Max $ 
+                    vBox [hCenter $ str x| x <- ["g", "G", "<enter>", "j", "k", "d", "?"] ], 
+                    vBox [hCenter $ str x| x <- ["goToTop","goToBottom","goToSource","nextEntry","prevEntry","toggleDescription","toggleHelp"] ] 
                 ]
-              ]
 
 drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
 drawEntry showDesc selected (e,n) =  
