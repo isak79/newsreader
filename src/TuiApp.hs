@@ -76,7 +76,7 @@ buildState = do
                 , selectedEntry = 0
                 , showDesc      = False 
                 , showHelp      = False 
-                , inMailbox     = None }
+                , inMailbox     = Box "VG" }
 
 setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
@@ -114,16 +114,23 @@ data TuiState = TuiState { entries       :: [Entry]
                          , selectedEntry :: Int 
                          , showDesc      :: Bool 
                          , showHelp      :: Bool 
-                         , inMailbox     :: MailBox (String, [Entry]) }
+                         , inMailbox     :: MailBox String }
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
-  | showHelp ts = [drawHelp, drawEntries ts]
-  | otherwise   = [drawEntries ts]
+  | showHelp ts = [drawHelp, drawMain ts]
+  | otherwise   = [drawMain ts]
       
 
-drawEntries :: TuiState -> Widget ResourceName
-drawEntries ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
+drawMain :: TuiState -> Widget ResourceName
+drawMain ts = case (inMailbox ts) of
+  None  -> drawHome
+  Box x -> drawMailBox ts
+
+drawHome = undefined 
+
+drawMailBox :: TuiState -> Widget ResourceName
+drawMailBox ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
