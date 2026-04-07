@@ -33,14 +33,29 @@ runApp = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchEntry 1
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchEntry (-1)
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem 1
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem (-1)
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
-handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = openSelectedUrl
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = changeInMailBox None
+handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
 handleTuiEvent _                                     = pure ()
+
+setInMailbox :: MailBox String -> TuiState -> TuiState
+setInMailbox mb ts = ts { inMailbox = mb }
+
+changeInMailBox :: MailBox String -> EventM ResourceName TuiState ()
+changeInMailBox mb = do
+  modify $ setInMailbox mb
+
+activateItem :: EventM ResourceName TuiState ()
+activateItem = do
+  inMailbox    <- gets inMailbox
+  mailBoxes    <- gets mailBoxes 
+  selectedItem <- gets selectedItem 
+  if inMailbox == None then changeInMailBox (Box (mailBoxes !! selectedItem)) else openSelectedUrl 
 
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
@@ -73,29 +88,33 @@ buildState :: IO TuiState
 buildState = do
   entries <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
   pure TuiState { entries       = entries
-                , selectedItem = 0
+                , selectedItem  = 0
                 , showDesc      = False 
                 , showHelp      = False 
-                , inMailbox     = None }
+                , inMailbox     = None 
+                , mailBoxes     = ["VG", "NYT"] }
 
-setSelectedEntry :: Int -> TuiState -> TuiState
-setSelectedEntry i t = t { selectedItem = i }
+setSelectedItem :: Int -> TuiState -> TuiState
+setSelectedItem i t = t { selectedItem = i }
 
-switchEntry :: Int -> EventM ResourceName TuiState ()
-switchEntry i = do
-  sEntry <- gets selectedItem 
-  entries <- gets entries
-  modify $ setSelectedEntry $ if (sEntry + i) < length entries && (sEntry + i) >= 0 then sEntry + i else sEntry 
+switchItem :: Int -> EventM ResourceName TuiState ()
+switchItem i = do
+  sEntry    <- gets selectedItem 
+  entries   <- gets entries
+  mailBoxes <- gets mailBoxes
+  inMailbox <- gets inMailbox 
+  let nrItems = if (inMailbox == None) then length mailBoxes else length entries
+  modify $ setSelectedItem $ if (sEntry + i) < nrItems && (sEntry + i) >= 0 then sEntry + i else sEntry 
 
 goToTop :: EventM ResourceName TuiState ()
 goToTop = do
-  modify $ setSelectedEntry 0
+  modify $ setSelectedItem 0
 
 
 goToBottom :: EventM ResourceName TuiState ()
 goToBottom = do
   entries <- gets entries
-  modify $ setSelectedEntry $ length entries - 1
+  modify $ setSelectedItem $ length entries - 1
 
 setShowDesc :: Bool -> TuiState -> TuiState
 setShowDesc b t = t { showDesc = b }
@@ -108,13 +127,15 @@ changeShowDesc = do
   
 
 data MailBox x = Box x | None
+  deriving Eq
 
 
 data TuiState = TuiState { entries       :: [Entry]
                          , selectedItem  :: Int 
                          , showDesc      :: Bool 
                          , showHelp      :: Bool 
-                         , inMailbox     :: MailBox String }
+                         , inMailbox     :: MailBox String 
+                         , mailBoxes     :: [String] }
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
@@ -128,7 +149,7 @@ drawMain ts = case (inMailbox ts) of
   Box _ -> drawMailBox ts
 
 drawHome :: TuiState -> Widget ResourceName
-drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip ["VG","NYT"] [0,1..])
+drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip (mailBoxes ts) [0,1..])
 
 
 drawMailBoxEntry :: Eq b => b -> (String, b) -> Widget n
