@@ -130,8 +130,11 @@ changeShowDesc = do
   
 
 data MailBox x = Box x | None
-  deriving (Eq, Show)
+  deriving Eq
 
+mailBoxLabel :: MailBox String -> String
+mailBoxLabel None    = "None"
+mailBoxLabel (Box v) = "MailBox " ++ v
 
 data TuiState = TuiState { entries       :: [Entry]
                          , selectedItem  :: Int 
@@ -164,7 +167,7 @@ drawMailBoxEntry selected (st,n) = border $ padRight Max $ withAttr a $ str st
 
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport ResourceName Vertical $ borderWithLabel (str $ show (inMailbox ts)) $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
+drawMailBox ts = viewport ResourceName Vertical $ borderWithLabel (str $ mailBoxLabel (inMailbox ts)) $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
