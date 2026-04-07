@@ -44,7 +44,7 @@ handleTuiEvent _                                     = pure ()
 
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
-  sEntry <- gets selectedEntry
+  sEntry <- gets selectedItem
   ents   <- gets entries
   let curr = ents !! sEntry 
   liftIO $ openUrl $ T.unpack $ source curr
@@ -73,17 +73,17 @@ buildState :: IO TuiState
 buildState = do
   entries <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
   pure TuiState { entries       = entries
-                , selectedEntry = 0
+                , selectedItem = 0
                 , showDesc      = False 
                 , showHelp      = False 
-                , inMailbox     = Box "VG" }
+                , inMailbox     = None }
 
 setSelectedEntry :: Int -> TuiState -> TuiState
-setSelectedEntry i t = t { selectedEntry = i }
+setSelectedEntry i t = t { selectedItem = i }
 
 switchEntry :: Int -> EventM ResourceName TuiState ()
 switchEntry i = do
-  sEntry <- gets selectedEntry 
+  sEntry <- gets selectedItem 
   entries <- gets entries
   modify $ setSelectedEntry $ if (sEntry + i) < length entries && (sEntry + i) >= 0 then sEntry + i else sEntry 
 
@@ -111,7 +111,7 @@ data MailBox x = Box x | None
 
 
 data TuiState = TuiState { entries       :: [Entry]
-                         , selectedEntry :: Int 
+                         , selectedItem  :: Int 
                          , showDesc      :: Bool 
                          , showHelp      :: Bool 
                          , inMailbox     :: MailBox String }
@@ -124,17 +124,23 @@ drawTui ts
 
 drawMain :: TuiState -> Widget ResourceName
 drawMain ts = case (inMailbox ts) of
-  None  -> drawHome
+  None  -> drawHome ts
   Box _ -> drawMailBox ts
 
-drawHome :: Widget ResourceName
-drawHome = vBox $ map drawMailBoxEntry ["VG","NYT"]
-  where
-    drawMailBoxEntry :: String -> Widget ResourceName
-    drawMailBoxEntry st = border $ padRight Max $ withAttr titleAttr $ str st
+drawHome :: TuiState -> Widget ResourceName
+drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip ["VG","NYT"] [1,2..])
+
+
+-- drawMailBoxEntry :: TuiState -> Widget ResourceName
+drawMailBoxEntry selected (st,n) = border $ padRight Max $ withAttr a $ str st
+  where 
+    current = selected == n
+    a :: AttrName
+    a = if current then selectedTitleAttr else titleAttr 
+
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
+drawMailBox ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
 
 drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
