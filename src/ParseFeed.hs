@@ -13,9 +13,9 @@ data Entry = Entry {  title :: T.Text
                     , description :: Maybe T.Text }
                     deriving Show
 
-parseFeed :: IO [Entry]
-parseFeed = do
-  feed <- fetchFeed "https://www.vg.no/rss/feed/?format=rss"
+parseFeed :: String -> IO [Entry]
+parseFeed url = do
+  feed <- fetchFeed url
   entries feed
 
 toEntry :: Item -> Maybe Entry

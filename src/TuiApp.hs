@@ -71,8 +71,8 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  entries <- parseFeed
-  pure TuiState { entries
+  entries <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
+  pure TuiState { entries       = entries
                 , selectedEntry = 0
                 , showDesc      = False 
                 , showHelp      = False 
@@ -114,7 +114,7 @@ data TuiState = TuiState { entries       :: [Entry]
                          , selectedEntry :: Int 
                          , showDesc      :: Bool 
                          , showHelp      :: Bool 
-                         , inMailbox     :: MailBox String }
+                         , inMailbox     :: MailBox (String, [Entry]) }
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
