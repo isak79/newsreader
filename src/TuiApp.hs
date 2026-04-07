@@ -74,8 +74,9 @@ buildState = do
   entries <- parseFeed
   pure TuiState { entries
                 , selectedEntry = 0
-                , showDesc = False 
-                , showHelp = False }
+                , showDesc      = False 
+                , showHelp      = False 
+                , inMailbox     = None }
 
 setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
@@ -106,11 +107,14 @@ changeShowDesc = do
   modify $ setShowDesc $ not prev
   
 
-data TuiState = TuiState { entries :: [Entry]
+data MailBox x = Box x | None
+
+
+data TuiState = TuiState { entries       :: [Entry]
                          , selectedEntry :: Int 
-                         , showDesc :: Bool 
-                         , showHelp :: Bool }
-  deriving Show
+                         , showDesc      :: Bool 
+                         , showHelp      :: Bool 
+                         , inMailbox     :: MailBox String }
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
