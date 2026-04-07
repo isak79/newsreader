@@ -145,8 +145,10 @@ data TuiState = TuiState { entries       :: [Entry]
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
-  | showHelp ts = [drawHelp, drawMain ts]
+  | showHelp ts = [drawHelp whichMailBox , drawMain ts]
   | otherwise   = [drawMain ts]
+    where
+      whichMailBox = inMailbox ts
       
 
 drawMain :: TuiState -> Widget ResourceName
@@ -171,13 +173,17 @@ drawMailBox ts = viewport ResourceName Vertical $ borderWithLabel (makeVisib $ s
   where
     makeVisib = if selectedItem ts == 0 then visible else id 
 
-drawHelp :: Widget n
-drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
+drawHelp :: MailBox String -> Widget n
+drawHelp mb =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
               hBox 
                 [padRight Max $ 
                     vBox [hCenter $ str x | x <- ["g", "G", "<enter>", "j", "k", "d", "?"]], 
-                    vBox [hCenter $ str x | x <- ["goToTop","goToBottom","goToSource","nextEntry","prevEntry","toggleDescription","toggleHelp"]]
+                    vBox [hCenter $ str x | x <- ["goToTop","goToBottom", goTo,"nextEntry","prevEntry","toggleDescription","toggleHelp"]]
                 ]
+                where
+                  goTo = case mb of
+                    None -> "goToMailBox"
+                    _    -> "goToUrl"
 
 drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
 drawEntry showDesc selected (e,n) =  
