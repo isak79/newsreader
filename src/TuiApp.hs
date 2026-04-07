@@ -130,4 +130,4 @@ drawEntry showDesc selected (e,n) =
       Just _  -> True
 
 drawField :: T.Text -> AttrName -> Widget n
-drawField t a = withAttr a $ str $ T.unpack t
+drawField t a = withAttr a $ txt t
