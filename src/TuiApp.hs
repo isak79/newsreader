@@ -128,6 +128,7 @@ drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ hBo
                   padTop (Pad 1) $ hCenter $ str "<enter>",
                   padTop (Pad 1) $ hCenter $ str "j",
                   padTop (Pad 1) $ hCenter $ str "k",
+                  padTop (Pad 1) $ hCenter $ str "d",
                   padTop (Pad 1) $ hCenter $ str "?"
                 ], 
                 vBox [
@@ -136,6 +137,7 @@ drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ hBo
                   padTop (Pad 1) $ hCenter $ str "goToSource",
                   padTop (Pad 1) $ hCenter $ str "nextEntry",
                   padTop (Pad 1) $ hCenter $ str "prevEntry",
+                  padTop (Pad 1) $ hCenter $ str "toggleDescription",
                   padTop (Pad 1) $ hCenter $ str "toggleHelp"
                 ]
               ]
