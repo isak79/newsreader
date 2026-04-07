@@ -23,6 +23,7 @@ executable newsreader
     main-is:          Main.hs
 
     other-modules:    ParseFeed
+										, TuiApp
 
 
     build-depends:    base ^>=4.18.3.0
@@ -37,6 +38,7 @@ executable newsreader
 
     -- Directories containing source files.
     hs-source-dirs:   app
+										, src
 
     -- Base language which the package is written in.
     default-language: GHC2021
