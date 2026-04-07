@@ -167,7 +167,9 @@ drawMailBoxEntry selected (st,n) = border $ padRight Max $ withAttr a $ str st
 
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport ResourceName Vertical $ borderWithLabel (str $ mailBoxLabel (inMailbox ts)) $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
+drawMailBox ts = viewport ResourceName Vertical $ borderWithLabel (makeVisible $ str $ mailBoxLabel (inMailbox ts)) $ vBox $ map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
+  where
+    makeVisible = if (selectedItem ts) == 0 then visible else id 
 
 drawHelp :: Widget n
 drawHelp =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
