@@ -33,8 +33,8 @@ runApp = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = modifyEntry 1
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = modifyEntry (-1)
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchEntry 1
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchEntry (-1)
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
@@ -81,8 +81,8 @@ buildState = do
 setSelectedEntry :: Int -> TuiState -> TuiState
 setSelectedEntry i t = t { selectedEntry = i }
 
-modifyEntry :: Int -> EventM ResourceName TuiState ()
-modifyEntry i = do
+switchEntry :: Int -> EventM ResourceName TuiState ()
+switchEntry i = do
   sEntry <- gets selectedEntry 
   entries <- gets entries
   modify $ setSelectedEntry $ if (sEntry + i) < length entries && (sEntry + i) >= 0 then sEntry + i else sEntry 
@@ -125,9 +125,13 @@ drawTui ts
 drawMain :: TuiState -> Widget ResourceName
 drawMain ts = case (inMailbox ts) of
   None  -> drawHome
-  Box x -> drawMailBox ts
+  Box _ -> drawMailBox ts
 
-drawHome = undefined 
+drawHome :: Widget ResourceName
+drawHome = vBox $ map drawMailBoxEntry ["VG","NYT"]
+  where
+    drawMailBoxEntry :: String -> Widget ResourceName
+    drawMailBoxEntry st = border $ padRight Max $ withAttr titleAttr $ str st
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport ResourceName Vertical $ vBox $ map (drawEntry (showDesc ts) (selectedEntry ts)) (zip (entries ts) [0,1..])
