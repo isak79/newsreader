@@ -1,11 +1,11 @@
 module ParseFeed(parseFeed, Entry(..)) where
 
-import Text.Feed.Import
 import Text.Feed.Query
 import Text.Feed.Types
 import qualified Data.Text as T
 import Data.Time (UTCTime)
 import Data.Maybe (mapMaybe)
+import FetchFeed
 
 data Entry = Entry {  title :: T.Text
                     , source :: T.Text
@@ -15,7 +15,7 @@ data Entry = Entry {  title :: T.Text
 
 parseFeed :: IO [Entry]
 parseFeed = do
-  feed <- parseFeedFromFile "testdata/nytimesfeed"
+  feed <- fetchFeed 
   entries feed
 
 toEntry :: Item -> Maybe Entry
