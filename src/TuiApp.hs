@@ -56,15 +56,13 @@ activateItem = do
   case inMailbox of
     None -> do
       mailBoxes    <- gets mailBoxes 
-      selectedItem <- gets selectedItem 
-      changeInMailBox (Box (mailBoxes !! selectedItem))
+      changeInMailBox (Box (getCurrent mailBoxes))
     _    -> openSelectedUrl 
 
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
-  sEntry <- gets selectedItem
   ents   <- gets entries
-  let curr = ents !! sEntry 
+  let curr = getCurrent ents
   liftIO $ openUrl $ T.unpack $ source curr
   pure ()
 
@@ -89,13 +87,14 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  entries <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
+  entries0 <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
+  let entries = fromJust $ fromList entries0 
   pure TuiState { entries       = entries
                 , selectedItem  = 0
                 , showDesc      = False 
                 , showHelp      = False 
                 , inMailbox     = None 
-                , mailBoxes     = ["VG", "NYT"] }
+                , mailBoxes     = fromJust $ fromList ["VG", "NYT"] }
 
 setSelectedItem :: Int -> TuiState -> TuiState
 setSelectedItem i t = t { selectedItem = i }
@@ -137,7 +136,7 @@ mailBoxLabel None    = "None"
 mailBoxLabel (Box v) = "MailBox " ++ v
 
 data Zipper a = Zipper [a] a [a]
-  deriving Show
+  deriving (Show, Functor)
 
 nextItem :: Zipper a -> Zipper a
 nextItem z@(Zipper _ _ [])    = z
@@ -157,12 +156,12 @@ toList (Zipper xs y zs) = reverse xs ++ y : zs
 getCurrent :: Zipper a -> a
 getCurrent (Zipper _ y _) = y
 
-data TuiState = TuiState { entries       :: [Entry]
+data TuiState = TuiState { entries       :: Zipper Entry
                          , selectedItem  :: Int 
                          , showDesc      :: Bool 
                          , showHelp      :: Bool 
                          , inMailbox     :: MailBox String 
-                         , mailBoxes     :: [String] }
+                         , mailBoxes     :: Zipper String }
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
@@ -172,17 +171,17 @@ drawTui ts
       box = case inMailbox ts of
         Box _ -> True
         _     -> False
-      toDraw = if box then drawMailBox ts else drawHome ts
+      toDraw = if box then drawMailBox ts else drawHome (mailBoxes ts)
       
 
-drawHome :: TuiState -> Widget ResourceName
-drawHome ts = vBox $ map (drawMailBoxEntry (selectedItem ts)) (zip (mailBoxes ts) [0,1..])
+-- drawHome :: TuiState -> Widget ResourceName
+drawHome mailboxes = vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
 
 
-drawMailBoxEntry :: Eq b => b -> (String, b) -> Widget n
-drawMailBoxEntry selected (st,n) = border $ padRight Max $ withAttr a $ str st
+-- drawMailBoxEntry :: Eq b => b -> (String, b) -> Widget n
+drawMailBoxEntry mb curMb = border $ padRight Max $ withAttr a $ str mb
   where 
-    current = selected == n
+    current = mb == curMb
     a :: AttrName
     a = if current then selectedTitleAttr else titleAttr 
 
