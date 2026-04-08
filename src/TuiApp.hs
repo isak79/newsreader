@@ -154,6 +154,9 @@ fromList (x:xs) = Just (Zipper [] x xs)
 toList :: Zipper a -> [a]
 toList (Zipper xs y zs) = reverse xs ++ y : zs
 
+getCurrent :: Zipper a -> a
+getCurrent (Zipper _ y _) = y
+
 data TuiState = TuiState { entries       :: [Entry]
                          , selectedItem  :: Int 
                          , showDesc      :: Bool 
