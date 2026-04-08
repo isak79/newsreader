@@ -136,6 +136,24 @@ mailBoxLabel :: MailBox String -> String
 mailBoxLabel None    = "None"
 mailBoxLabel (Box v) = "MailBox " ++ v
 
+data Zipper a = Zipper [a] a [a]
+  deriving Show
+
+nextItem :: Zipper a -> Zipper a
+nextItem z@(Zipper _ _ [])    = z
+nextItem (Zipper xs y (z:zs)) = Zipper (y:xs) z zs
+
+prevItem :: Zipper a -> Zipper a
+prevItem z@(Zipper [] _ _)    = z
+prevItem (Zipper (x:xs) y zs) = Zipper xs x (y:zs)
+
+fromList :: [a] -> Maybe (Zipper a)
+fromList []     = Nothing
+fromList (x:xs) = Just (Zipper [] x xs)
+
+toList :: Zipper a -> [a]
+toList (Zipper xs y zs) = reverse xs ++ y : zs
+
 data TuiState = TuiState { entries       :: [Entry]
                          , selectedItem  :: Int 
                          , showDesc      :: Bool 
