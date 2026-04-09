@@ -1,5 +1,5 @@
-module TuiApp(runApp) where
-
+-- module TuiApp(runApp) where
+--
 import ParseFeed (parseFeed, Entry(..))
 import Brick
 import qualified Graphics.Vty as V
@@ -43,10 +43,10 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = changeInMailBox None
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
 handleTuiEvent _                                     = pure ()
 
-setInMailbox :: MailBox String -> TuiState -> TuiState
+setInMailbox :: MailBox (String, Zipper Entry) -> TuiState -> TuiState
 setInMailbox mb ts = ts { inMailbox = mb }
 
-changeInMailBox :: MailBox String -> EventM ResourceName TuiState ()
+changeInMailBox :: MailBox (String, Zipper Entry) -> EventM ResourceName TuiState ()
 changeInMailBox mb = do
   modify $ setInMailbox mb
 
@@ -89,9 +89,7 @@ buildState :: IO TuiState
 buildState = do
   entries0 <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
   let entries = fromJust $ fromList entries0 
-  pure TuiState { entries       = entries
-                , selectedItem  = 0
-                , showDesc      = False 
+  pure TuiState { showDesc      = False 
                 , showHelp      = False 
                 , inMailbox     = None 
                 , mailBoxes     = fromJust $ fromList ["VG", "NYT"] }
@@ -111,6 +109,8 @@ switchItem i = do
         mailBoxes <- gets mailBoxes 
         let newMailBoxes = nextItem mailBoxes 
         modify $ setMailBoxes newMailBoxes 
+    Box b
+      -> 
 
 goToTop :: EventM ResourceName TuiState ()
 goToTop = do
@@ -130,7 +130,7 @@ changeShowDesc :: EventM ResourceName TuiState ()
 changeShowDesc = do
   prev <- gets showDesc 
   modify $ setShowDesc $ not prev
-  
+
 
 data MailBox x = Box x | None
   deriving Eq
@@ -141,6 +141,28 @@ mailBoxLabel (Box v) = "MailBox " ++ v
 
 data Zipper a = Zipper [a] a [a]
   deriving (Show, Functor)
+
+-- copied from Data.List source code
+unsnoc :: [a] -> Maybe ([a], a)
+unsnoc   = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
+
+firstItem :: Zipper a -> Zipper a
+firstItem z@(Zipper [] _ _) = z
+firstItem (Zipper xs y zs)  = Zipper [] r (reverse h ++ y:zs)
+  where
+    r        = snd unsnoced
+    h        = fst unsnoced
+    unsnoced = fromJust $ unsnoc xs
+
+
+lastItem :: Zipper a -> Zipper a
+lastItem z@(Zipper _ _ []) = z
+lastItem (Zipper xs y zs)  = Zipper (reverse h ++ y:xs) r []
+  where
+    r        = snd unsnoced
+    h        = fst unsnoced
+    unsnoced = fromJust $ unsnoc zs
+
 
 nextItem :: Zipper a -> Zipper a
 nextItem z@(Zipper _ _ [])    = z
@@ -179,9 +201,9 @@ drawTui ts
         Box _ -> True
         _     -> False
       toDraw = if box then drawMailBox ts else drawHome (mailBoxes ts)
-      
 
--- drawHome :: TuiState -> Widget ResourceName
+
+drawHome :: TuiState -> Widget ResourceName
 drawHome mailboxes = vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
 
 
