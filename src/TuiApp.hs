@@ -99,14 +99,18 @@ buildState = do
 setSelectedItem :: Int -> TuiState -> TuiState
 setSelectedItem i t = t { selectedItem = i }
 
+setMailBoxes :: Zipper String -> TuiState -> TuiState
+setMailBoxes mb ts = ts { mailBoxes = mb }
+
 switchItem :: Int -> EventM ResourceName TuiState ()
 switchItem i = do
-  sEntry    <- gets selectedItem 
-  entries   <- gets entries
-  mailBoxes <- gets mailBoxes
   inMailbox <- gets inMailbox 
-  let nrItems = if (inMailbox == None) then length mailBoxes else length entries
-  modify $ setSelectedItem $ if (sEntry + i) < nrItems && (sEntry + i) >= 0 then sEntry + i else sEntry 
+  case inMailbox of
+    None
+      -> do
+        mailBoxes <- gets mailBoxes 
+        let newMailBoxes = nextItem mailBoxes 
+        modify $ setMailBoxes newMailBoxes 
 
 goToTop :: EventM ResourceName TuiState ()
 goToTop = do
@@ -156,6 +160,9 @@ toList (Zipper xs y zs) = reverse xs ++ y : zs
 getCurrent :: Zipper a -> a
 getCurrent (Zipper _ y _) = y
 
+onTop :: Zipper a -> Bool
+onTop (Zipper xs _ _) = null xs
+
 data TuiState = TuiState { entries       :: Zipper Entry
                          , selectedItem  :: Int 
                          , showDesc      :: Bool 
@@ -187,33 +194,27 @@ drawMailBoxEntry mb curMb = border $ padRight Max $ withAttr a $ str mb
 
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport ResourceName Vertical $ vBox $ hCenter (makeVisib $ withAttr titleAttr $ str $ mailBoxLabel (inMailbox ts)) : map (drawEntry (showDesc ts) (selectedItem ts)) (zip (entries ts) [0,1..])
+drawMailBox ts = viewport ResourceName Vertical 
+  $ vBox $  toList $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
-    makeVisib = if selectedItem ts == 0 then visible else id 
+    makeVisib = if  onTop (entries ts) then visible else id 
+    ents      = entries ts
+    currEnt   = getCurrent ents
 
-drawHelp :: Bool -> Widget n
-drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
-              hBox 
-                [padRight Max $ 
-                    vBox [hCenter $ str x | x <- ["g", "G", "<enter>", "j", "k", "d", "?"]], 
-                    vBox [hCenter $ str x | x <- ["goToTop","goToBottom", goTo,"nextEntry","prevEntry","toggleDescription","toggleHelp"]]
-                ]
-                where
-                  goTo = if box then "goToUrl" else "goToMailBox"
 
-drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
-drawEntry showDesc selected (e,n) =  
+-- drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
+drawEntry showDesc currEnt ent =  
   toView $ border $ padRight Max $ vBox 
       [
         hBox [
-              drawField (title e) a 
-            , padLeft Max $ withAttr b $ drawTime (pubTime e) 
+              drawField (title ent) a 
+            , padLeft Max $ withAttr b $ drawTime (pubTime ent) 
             ]
       , padRight (Pad 30) $ padTop (Pad 1) $ padBottom (Pad 1) desc
-      , drawField (source e) sourceAttr
+      , drawField (source ent) sourceAttr
       ]
   where 
-    current = selected == n
+    current = currEnt == ent
     a :: AttrName
     a = if current then selectedTitleAttr else titleAttr 
     b :: AttrName
@@ -224,10 +225,20 @@ drawEntry showDesc selected (e,n) =
     drawTime Nothing  = emptyWidget 
     drawTime (Just t) = str $ show t
     desc :: Widget n
-    desc = if showDesc && current && hasDescription then txtWrap $ fromJust $ description e else emptyWidget 
-    hasDescription = case description e of
+    desc = if showDesc && current && hasDescription then txtWrap $ fromJust $ description ent else emptyWidget 
+    hasDescription = case description ent of
       Nothing -> False
       Just _  -> True
+
+drawHelp :: Bool -> Widget n
+drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
+              hBox 
+                [padRight Max $ 
+                    vBox [hCenter $ str x | x <- ["g", "G", "<enter>", "j", "k", "d", "?"]], 
+                    vBox [hCenter $ str x | x <- ["goToTop","goToBottom", goTo,"nextEntry","prevEntry","toggleDescription","toggleHelp"]]
+                ]
+                where
+                  goTo = if box then "goToUrl" else "goToMailBox"
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ txt t
