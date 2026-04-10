@@ -33,31 +33,44 @@ runApp = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchToNextItem
--- handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchToPrev
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem Next
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem Prev
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
--- handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
--- handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = switchItem Top 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
 handleTuiEvent _                                     = pure ()
 
 
-switchToNextItem = do
+data Dir = Next | Prev | Top | Bottom
+  deriving Eq
+
+switchItem :: Dir -> EventM ResourceName TuiState ()
+switchItem nextPrev = do
   mb <- gets mailBoxes
   cd <- gets currentDisplay 
   case cd of
     ShowEntries 
               -> do   
                 let (curMailBoxName, curMailBox)   = getCurrent mb
-                let newMailBox   = nextItem curMailBox 
+                let newMailBox   = func curMailBox 
                 let newMailBoxes = updateCurrentItem (curMailBoxName,newMailBox) mb 
                 modify $ setMailBoxes newMailBoxes 
     ShowMailboxList
               -> do
-                let newMb = nextItem mb
+                let newMb = func mb
                 modify $ setMailBoxes newMb
+    where
+      func = case nextPrev of
+        Next   -> nextItem 
+        Prev   -> prevItem 
+        Top    -> firstItem
+        Bottom -> lastItem
+
+  
+
 
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
@@ -164,7 +177,7 @@ onTop :: Zipper a -> Bool
 onTop (Zipper xs _ _) = null xs
 
 updateCurrentItem :: a -> Zipper a -> Zipper a
-updateCurrentItem z (Zipper xs y zs) = Zipper xs z zs
+updateCurrentItem z (Zipper xs _ zs) = Zipper xs z zs
 
 
 type MailboxName = String
