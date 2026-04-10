@@ -36,5 +36,5 @@ cleanUrl t = case T.words t of
 entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
   case feed of
-    Nothing   -> pure []
+    Nothing   -> pure [Entry { title = T.pack "Nothing to show", source = T.pack "Nothing to show" }]
     Just fee  -> pure (mapMaybe toEntry (feedItems fee))
