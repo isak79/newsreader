@@ -100,17 +100,17 @@ setSelectedItem i t = t { selectedItem = i }
 setMailBoxes :: Zipper String -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
-switchItem :: Int -> EventM ResourceName TuiState ()
-switchItem i = do
-  inMailbox <- gets inMailbox 
-  case inMailbox of
-    None
-      -> do
-        mailBoxes <- gets mailBoxes 
-        let newMailBoxes = nextItem mailBoxes 
-        modify $ setMailBoxes newMailBoxes 
-    Box b
-      -> 
+-- switchItem :: Int -> EventM ResourceName TuiState ()
+-- switchItem i = do
+--   inMailbox <- gets inMailbox 
+--   case inMailbox of
+--     None
+--       -> do
+--         mailBoxes <- gets mailBoxes 
+--         let newMailBoxes = nextItem mailBoxes 
+--         modify $ setMailBoxes newMailBoxes 
+--     Box b
+--       -> 
 
 goToTop :: EventM ResourceName TuiState ()
 goToTop = do
@@ -150,18 +150,14 @@ firstItem :: Zipper a -> Zipper a
 firstItem z@(Zipper [] _ _) = z
 firstItem (Zipper xs y zs)  = Zipper [] r (reverse h ++ y:zs)
   where
-    r        = snd unsnoced
-    h        = fst unsnoced
-    unsnoced = fromJust $ unsnoc xs
+    (h,r) = fromJust $ unsnoc xs
 
 
 lastItem :: Zipper a -> Zipper a
 lastItem z@(Zipper _ _ []) = z
 lastItem (Zipper xs y zs)  = Zipper (reverse h ++ y:xs) r []
   where
-    r        = snd unsnoced
-    h        = fst unsnoced
-    unsnoced = fromJust $ unsnoc zs
+    (h,r) = fromJust $ unsnoc zs
 
 
 nextItem :: Zipper a -> Zipper a
@@ -184,6 +180,7 @@ getCurrent (Zipper _ y _) = y
 
 onTop :: Zipper a -> Bool
 onTop (Zipper xs _ _) = null xs
+
 
 data TuiState = TuiState { entries       :: Zipper Entry
                          , selectedItem  :: Int 
