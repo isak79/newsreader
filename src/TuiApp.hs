@@ -33,37 +33,33 @@ runApp = do
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem 1
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem (-1)
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchToNextItem
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchToPrev
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = changeInMailBox None
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
 handleTuiEvent _                                     = pure ()
 
-setInMailbox :: MailBox (String, Zipper Entry) -> TuiState -> TuiState
-setInMailbox mb ts = ts { inMailbox = mb }
 
-changeInMailBox :: MailBox (String, Zipper Entry) -> EventM ResourceName TuiState ()
-changeInMailBox mb = do
-  modify $ setInMailbox mb
 
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
-  inMailbox    <- gets inMailbox
-  case inMailbox of
-    None -> do
-      mailBoxes    <- gets mailBoxes 
-      changeInMailBox (Box (getCurrent mailBoxes))
-    _    -> openSelectedUrl 
+  curDisplay    <- gets currentDisplay
+  case curDisplay of
+     ShowMailboxList  -> modify $ setCurrentDisplay ShowEntries
+     _    -> openSelectedUrl 
+
+setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
+setCurrentDisplay cd ts = ts { currentDisplay = cd } 
 
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
-  ents   <- gets entries
-  let curr = getCurrent ents
-  liftIO $ openUrl $ T.unpack $ source curr
+  mailBoxes   <- gets mailBoxes
+  let currEntry = getCurrent $ snd $ getCurrent mailBoxes
+  liftIO $ openUrl $ T.unpack $ source currEntry
   pure ()
 
 
@@ -87,18 +83,18 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  entries0 <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
-  let entries = fromJust $ fromList entries0 
-  pure TuiState { showDesc      = False 
-                , showHelp      = False 
-                , inMailbox     = None 
-                , mailBoxes     = fromJust $ fromList ["VG", "NYT"] }
+  entriesVG   <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
+  entriesNYT  <- parseFeed "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+  pure TuiState { currentDisplay = ShowMailboxList
+                , showDesc       = False 
+                , showHelp       = False 
+                , mailBoxes      = fromJust $ fromList [
+                  ("VG", fromJust $ fromList entriesVG)
+                , ("NYT", fromJust $ fromList entriesNYT)
+                ] }
 
-setSelectedItem :: Int -> TuiState -> TuiState
-setSelectedItem i t = t { selectedItem = i }
-
-setMailBoxes :: Zipper String -> TuiState -> TuiState
-setMailBoxes mb ts = ts { mailBoxes = mb }
+setMailBox :: (MailboxName,Zipper String) -> TuiState -> TuiState
+setMailBox mb ts = ts { mailBoxes = mb }
 
 -- switchItem :: Int -> EventM ResourceName TuiState ()
 -- switchItem i = do
@@ -132,15 +128,8 @@ changeShowDesc = do
   modify $ setShowDesc $ not prev
 
 
-data MailBox x = Box x | None
-  deriving Eq
-
-mailBoxLabel :: MailBox String -> String
-mailBoxLabel None    = "None"
-mailBoxLabel (Box v) = "MailBox " ++ v
-
 data Zipper a = Zipper [a] a [a]
-  deriving (Show, Functor)
+  deriving (Show, Functor, Eq)
 
 -- copied from Data.List source code
 unsnoc :: [a] -> Maybe ([a], a)
@@ -182,22 +171,27 @@ onTop :: Zipper a -> Bool
 onTop (Zipper xs _ _) = null xs
 
 
-data TuiState = TuiState { entries       :: Zipper Entry
-                         , selectedItem  :: Int 
-                         , showDesc      :: Bool 
-                         , showHelp      :: Bool 
-                         , inMailbox     :: MailBox String 
-                         , mailBoxes     :: Zipper String }
+type MailboxName = String
+type Mailbox     = Zipper Entry
+type Mailboxes   = Zipper (MailboxName, Mailbox)
+
+data CurrentDisplay = ShowMailboxList | ShowEntries
+
+data TuiState = TuiState { currentDisplay :: CurrentDisplay
+                         , showDesc       :: Bool 
+                         , showHelp       :: Bool 
+                         , mailBoxes      :: Mailboxes  }
+
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
-  | showHelp ts = [drawHelp box , toDraw]
+  | showHelp ts = [drawHelp inBox , toDraw]
   | otherwise   = [toDraw]
     where
-      box = case inMailbox ts of
-        Box _ -> True
-        _     -> False
-      toDraw = if box then drawMailBox ts else drawHome (mailBoxes ts)
+      inBox = case currentDisplay ts of
+        ShowMailboxList -> False
+        _               -> True
+      toDraw = if inBox then drawMailBox ts else drawHome ts
 
 
 drawHome :: TuiState -> Widget ResourceName
@@ -205,11 +199,11 @@ drawHome mailboxes = vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailbox
 
 
 -- drawMailBoxEntry :: Eq b => b -> (String, b) -> Widget n
-drawMailBoxEntry mb curMb = border $ padRight Max $ withAttr a $ str mb
+drawMailBoxEntry mb curMb = border $ padRight Max $ withAttr a $ str $ fst mb
   where 
-    current = mb == curMb
+    isCurrent = mb == curMb
     a :: AttrName
-    a = if current then selectedTitleAttr else titleAttr 
+    a = if isCurrent then selectedTitleAttr else titleAttr 
 
 
 drawMailBox :: TuiState -> Widget ResourceName
