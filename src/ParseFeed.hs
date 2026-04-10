@@ -1,4 +1,4 @@
-module ParseFeed(parseFeed, Entry(..)) where
+module ParseFeed(parseFeed, Entry(..), fallbackEntry) where
 
 import Text.Feed.Query
 import Text.Feed.Types
@@ -42,5 +42,5 @@ fallbackEntry = Entry { title = T.pack "Nothing to show"
 entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
   case feed of
-    Nothing   -> pure [fallbackEntry]
+    Nothing   -> pure []
     Just fee  -> pure (mapMaybe toEntry (feedItems fee))

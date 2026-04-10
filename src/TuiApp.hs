@@ -1,6 +1,6 @@
 module TuiApp(runApp) where
 
-import ParseFeed (parseFeed, Entry(..))
+import ParseFeed (parseFeed, Entry(..), fallbackEntry)
 import Brick
 import qualified Graphics.Vty as V
 import qualified Data.Text as T
@@ -116,9 +116,13 @@ buildState = do
                 , showDesc       = False 
                 , showHelp       = False 
                 , mailBoxes      = fromJust $ fromList [
-                  ("VG", fromJust $ fromList entriesVG)
-                , ("NYT", fromJust $ fromList entriesNYT)
+                  ("VG", removeJust $ fromList entriesVG)
+                , ("NYT", removeJust $ fromList entriesNYT)
                 ] }
+      where
+        removeJust n = case n of
+          Just k  -> k
+          Nothing -> fromJust $ fromList [ fallbackEntry ] 
 
 -- setMailBox :: MailBoxes -> TuiState -> TuiState
 -- setMailBox mb ts = ts { mailBoxes = mb }
