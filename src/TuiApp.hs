@@ -207,12 +207,12 @@ drawTui ts
       toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
 
 
--- drawHome :: TuiState -> Widget ResourceName
+drawHome :: Eq b => Zipper (String, b) -> Widget n
 drawHome mailboxes = vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
 
 
--- drawMailBoxEntry :: Eq b => b -> (String, b) -> Widget n
-drawMailBoxEntry mb curMb = border $ padRight Max $ withAttr a $ str $ fst mb
+drawMailBoxEntry :: Eq b => (String, b) -> (String, b) -> Widget n
+drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
   where 
     isCurrent = mb == curMb
     a :: AttrName
