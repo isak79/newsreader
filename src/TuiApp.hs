@@ -120,8 +120,8 @@ buildState = do
                 , ("NYT", fromJust $ fromList entriesNYT)
                 ] }
 
--- setMailBox :: (MailboxName, Zipper Entry) -> TuiState -> TuiState
-setMailBox mb ts = ts { mailBoxes = mb }
+-- setMailBox :: MailBoxes -> TuiState -> TuiState
+-- setMailBox mb ts = ts { mailBoxes = mb }
 
 
 setShowDesc :: Bool -> TuiState -> TuiState
@@ -173,8 +173,8 @@ toList (Zipper xs y zs) = reverse xs ++ y : zs
 getCurrent :: Zipper a -> a
 getCurrent (Zipper _ y _) = y
 
-onTop :: Zipper a -> Bool
-onTop (Zipper xs _ _) = null xs
+-- onTop :: Zipper a -> Bool
+-- onTop (Zipper xs _ _) = null xs
 
 updateCurrentItem :: a -> Zipper a -> Zipper a
 updateCurrentItem z (Zipper xs _ zs) = Zipper xs z zs
@@ -223,12 +223,12 @@ drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport ResourceName Vertical 
   $ vBox $  toList $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
-    makeVisib = if  onTop ents then visible else id 
+    -- makeVisib = if  onTop ents then visible else id 
     ents      = snd $ getCurrent $ mailBoxes ts
     currEnt   = getCurrent ents
 
 
--- drawEntry :: Eq b => Bool -> b -> (Entry, b) -> Widget n
+drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =  
   toView $ border $ padRight Max $ vBox 
       [
