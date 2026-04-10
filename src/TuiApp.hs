@@ -1,5 +1,5 @@
--- module TuiApp(runApp) where
---
+module TuiApp(runApp) where
+
 import ParseFeed (parseFeed, Entry(..))
 import Brick
 import qualified Graphics.Vty as V
@@ -210,8 +210,8 @@ drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport ResourceName Vertical 
   $ vBox $  toList $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
-    makeVisib = if  onTop (entries ts) then visible else id 
-    ents      = entries ts
+    makeVisib = if  onTop ents then visible else id 
+    ents      = snd $ getCurrent $ mailBoxes ts
     currEnt   = getCurrent ents
 
 
