@@ -34,16 +34,30 @@ runApp = do
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchToNextItem
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchToPrev
+-- handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchToPrev
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
+-- handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = goToTop 
+-- handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = goToBottom 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
 handleTuiEvent _                                     = pure ()
 
 
+switchToNextItem = do
+  mb <- gets mailBoxes
+  cd <- gets currentDisplay 
+  case cd of
+    ShowEntries 
+              -> do   
+                let (curMailBoxName, curMailBox)   = getCurrent mb
+                let newMailBox   = nextItem curMailBox 
+                let newMailBoxes = updateCurrentItem (curMailBoxName,newMailBox) mb 
+                modify $ setMailBoxes newMailBoxes 
+    ShowMailboxList
+              -> do
+                let newMb = nextItem mb
+                modify $ setMailBoxes newMb
 
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
@@ -93,30 +107,9 @@ buildState = do
                 , ("NYT", fromJust $ fromList entriesNYT)
                 ] }
 
-setMailBox :: (MailboxName,Zipper String) -> TuiState -> TuiState
+-- setMailBox :: (MailboxName, Zipper Entry) -> TuiState -> TuiState
 setMailBox mb ts = ts { mailBoxes = mb }
 
--- switchItem :: Int -> EventM ResourceName TuiState ()
--- switchItem i = do
---   inMailbox <- gets inMailbox 
---   case inMailbox of
---     None
---       -> do
---         mailBoxes <- gets mailBoxes 
---         let newMailBoxes = nextItem mailBoxes 
---         modify $ setMailBoxes newMailBoxes 
---     Box b
---       -> 
-
-goToTop :: EventM ResourceName TuiState ()
-goToTop = do
-  modify $ setSelectedItem 0
-
-
-goToBottom :: EventM ResourceName TuiState ()
-goToBottom = do
-  entries <- gets entries
-  modify $ setSelectedItem $ length entries - 1
 
 setShowDesc :: Bool -> TuiState -> TuiState
 setShowDesc b t = t { showDesc = b }
@@ -170,17 +163,24 @@ getCurrent (Zipper _ y _) = y
 onTop :: Zipper a -> Bool
 onTop (Zipper xs _ _) = null xs
 
+updateCurrentItem :: a -> Zipper a -> Zipper a
+updateCurrentItem z (Zipper xs y zs) = Zipper xs z zs
+
 
 type MailboxName = String
 type Mailbox     = Zipper Entry
-type Mailboxes   = Zipper (MailboxName, Mailbox)
+type MailBoxes   = Zipper (MailboxName, Mailbox)
 
 data CurrentDisplay = ShowMailboxList | ShowEntries
 
 data TuiState = TuiState { currentDisplay :: CurrentDisplay
                          , showDesc       :: Bool 
                          , showHelp       :: Bool 
-                         , mailBoxes      :: Mailboxes  }
+                         , mailBoxes      :: MailBoxes  }
+
+
+setMailBoxes :: MailBoxes -> TuiState -> TuiState
+setMailBoxes mb ts = ts { mailBoxes = mb }
 
 
 drawTui :: TuiState -> [Widget ResourceName]
@@ -191,10 +191,10 @@ drawTui ts
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
         _               -> True
-      toDraw = if inBox then drawMailBox ts else drawHome ts
+      toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
 
 
-drawHome :: TuiState -> Widget ResourceName
+-- drawHome :: TuiState -> Widget ResourceName
 drawHome mailboxes = vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
 
 
