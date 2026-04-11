@@ -48,7 +48,7 @@ data Dir = Next | Prev | Top | Bottom
   deriving Eq
 
 switchItem :: Dir -> EventM ResourceName TuiState ()
-switchItem nextPrev = do
+switchItem switchTo = do
   mb <- gets mailBoxes
   cd <- gets currentDisplay 
   case cd of
@@ -63,7 +63,7 @@ switchItem nextPrev = do
                 let newMb = func mb
                 modify $ setMailBoxes newMb
     where
-      func = case nextPrev of
+      func = case switchTo of
         Next   -> nextItem 
         Prev   -> prevItem 
         Top    -> firstItem
