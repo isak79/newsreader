@@ -27,7 +27,7 @@ executable newsreader
 										, FetchFeed
 
 
-    build-depends:    base ^>=4.18.3.0
+    build-depends:    base >=4.18 && <5
 										, text
 										, megaparsec
 										, brick
