@@ -6,10 +6,79 @@ import Database.Selda
 import Database.Selda.SQLite
 import ParseFeed (Entry(..))
 
-entries :: Table Entry
-entries = table "entries" [#title :- primary]
+data DbEntry = DbEntry 
+  {
+    eID           :: ID DbEntry   
+  , mailboxName   :: Text
+  , dbTitle       :: Text
+  , dbSource      :: Text
+  , dbPubTime     :: Maybe UTCTime
+  , dbDescription :: Maybe Text 
+  } deriving (Show, Eq, Generic)
 
-dbActionsAdd :: (MonadIO m, MonadMask m) => [Entry] -> m ()
-dbActionsAdd ents = withSQLite "newsreader.sqlite" $ do
+instance SqlRow DbEntry
+
+entries :: Table DbEntry
+entries = table "entries" [#eID :- autoPrimary]
+
+data DbMailbox = DbMailbox {
+    mID           :: ID DbMailbox 
+  , url           :: Text
+  , name          :: Text
+  , unreadEntries :: Int
+  } deriving (Eq, Show, Generic)
+
+instance SqlRow DbMailbox
+
+mailboxes :: Table DbMailbox 
+mailboxes = table "mailboxes" [#mID :- autoPrimary]
+
+data DbMailboxEntry = DbMailboxEntry {
+    meID      :: ID DbMailboxEntry
+  , entryID   :: ID DbEntry
+  , mailboxID :: ID DbMailbox
+  , isRead    :: Bool
+  , addedAt   :: UTCTime
+  } deriving (Show, Eq, Generic)
+
+instance SqlRow DbMailboxEntry 
+  
+mailboxEntries :: Table DbMailboxEntry
+mailboxEntries = table "mailboxEntries" [#meID :- autoPrimary]
+
+type MailboxName = Text
+
+toDbEntry  :: MailboxName -> Entry -> DbEntry
+toDbEntry mName ent = DbEntry {
+    eID           = def
+  , mailboxName   = mName
+  , dbTitle       = title ent
+  , dbSource      = source ent
+  , dbPubTime     = pubTime ent
+  , dbDescription = description ent
+  }
+
+fromDbEntry :: DbEntry -> Entry
+fromDbEntry dbEnt = Entry {
+    title       = dbTitle dbEnt
+  , source      = dbSource dbEnt
+  , pubTime     = dbPubTime dbEnt
+  , description = dbDescription dbEnt
+  }
+
+
+
+dbActionsAdd :: (MonadIO m, MonadMask m) => Text -> [Entry] -> m ()
+dbActionsAdd mailboxName ents = withSQLite "newsreader.sqlite" $ do
+  let dbEnts = map (toDbEntry mailboxName) ents
   createTable entries
-  insert_ entries ents
+  insert_ entries dbEnts
+
+dbActionsGetMailbox :: Col t Text -> Query t (Row t DbEntry)
+dbActionsGetMailbox mailboxName = do
+   dbEnts <- select entries 
+   restrict (dbEnts ! #mailboxName .== mailboxName)
+   return dbEnts
+
+
+
