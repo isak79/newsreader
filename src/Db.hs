@@ -9,7 +9,6 @@ import ParseFeed (Entry(..))
 data DbEntry = DbEntry 
   {
     eID           :: ID DbEntry   
-  , mailboxName   :: Text
   , dbTitle       :: Text
   , dbSource      :: Text
   , dbPubTime     :: Maybe UTCTime
@@ -48,10 +47,9 @@ mailboxEntries = table "mailboxEntries" [#meID :- autoPrimary]
 
 type MailboxName = Text
 
-toDbEntry  :: MailboxName -> Entry -> DbEntry
-toDbEntry mName ent = DbEntry {
+toDbEntry  :: Entry -> DbEntry
+toDbEntry ent = DbEntry {
     eID           = def
-  , mailboxName   = mName
   , dbTitle       = title ent
   , dbSource      = source ent
   , dbPubTime     = pubTime ent
@@ -68,17 +66,17 @@ fromDbEntry dbEnt = Entry {
 
 
 
-dbActionsAdd :: (MonadIO m, MonadMask m) => Text -> [Entry] -> m ()
-dbActionsAdd mailboxName ents = withSQLite "newsreader.sqlite" $ do
-  let dbEnts = map (toDbEntry mailboxName) ents
-  createTable entries
-  insert_ entries dbEnts
+-- dbActionsAdd :: (MonadIO m, MonadMask m) => Text -> [Entry] -> m ()
+-- dbActionsAdd mailboxName ents = withSQLite "newsreader.sqlite" $ do
+--   let dbEnts = map (toDbEntry mailboxName) ents
+--   createTable entries
+  -- insert_ entries dbEnts
 
-dbActionsGetMailbox :: Col t Text -> Query t (Row t DbEntry)
-dbActionsGetMailbox mailboxName = do
-   dbEnts <- select entries 
-   restrict (dbEnts ! #mailboxName .== mailboxName)
-   return dbEnts
+-- dbActionsGetMailbox :: Col t Text -> Query t (Row t DbEntry)
+-- dbActionsGetMailbox mailboxName = do
+--    dbEnts <- select entries 
+--    restrict (dbEnts ! #mailboxName .== mailboxName)
+--    return dbEnts
 
 
 
