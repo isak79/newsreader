@@ -19,7 +19,8 @@ data DbEntry = DbEntry
 instance SqlRow DbEntry
 
 entries :: Table DbEntry
-entries = table "entries" [#eID :- autoPrimary]
+entries = table "entries" [ #eID   :- autoPrimary
+                          , #dedup :- unique]
 
 data DbMailbox = DbMailbox {
     mID           :: ID DbMailbox 
