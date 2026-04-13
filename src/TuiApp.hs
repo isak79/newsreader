@@ -264,11 +264,13 @@ drawHelp :: Bool -> Widget n
 drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
               hBox 
                 [padRight Max $ 
-                    vBox [hCenter $ str x | x <- ["g", "G", "<enter>", "j", "k", "d", "?"]], 
-                    vBox [hCenter $ str x | x <- ["goToTop","goToBottom", goTo,"nextEntry","prevEntry","toggleDescription","toggleHelp"]]
+                    vBox [hCenter $ str x | x <- ["j","k","<enter>","g","G","d","?","-"]], 
+                    vBox [hCenter $ str x | x <- [nextItem',prevItem',goTo,"goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]]
                 ]
                 where
-                  goTo = if box then "goToUrl" else "goToMailBox"
+                  goTo = if box then "goToUrl" else "goToMailbox"
+                  nextItem' = if box then "nextEntry" else "nextMailbox"
+                  prevItem' = if box then "prevEntry" else "prevMailbox"
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ txt t
