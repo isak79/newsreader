@@ -29,7 +29,6 @@ executable newsreader
 
     build-depends:    base >=4.16 && <5
 										, text
-										, megaparsec
 										, brick
 										, feed
 										, time
@@ -39,8 +38,6 @@ executable newsreader
 										, http-conduit
 										, bytestring
 										, http-client
-										, http-client-tls
-										, selda
 										, selda-sqlite
 
     -- Directories containing source files.
