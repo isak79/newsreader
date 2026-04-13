@@ -13,6 +13,7 @@ data DbEntry = DbEntry
   , dbSource      :: Text
   , dbPubTime     :: Maybe UTCTime
   , dbDescription :: Maybe Text 
+  , dedup        :: Text
   } deriving (Show, Eq, Generic)
 
 instance SqlRow DbEntry
@@ -50,11 +51,17 @@ type MailboxName = Text
 toDbEntry  :: Entry -> DbEntry
 toDbEntry ent = DbEntry {
     eID           = def
-  , dbTitle       = title ent
-  , dbSource      = source ent
+  , dbTitle       = title'
+  , dbSource      = source'
   , dbPubTime     = pubTime ent
   , dbDescription = description ent
+  , dedup         = dedupString
   }
+  where 
+    title'  = title ent
+    source' = source ent
+    dedupString = title' <> "\x1f" <> source'
+
 
 fromDbEntry :: DbEntry -> Entry
 fromDbEntry dbEnt = Entry {
