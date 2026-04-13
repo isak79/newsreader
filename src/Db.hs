@@ -118,7 +118,12 @@ getMailboxSources mailboxName = do
 
   pure (feed ! #url)
 
-  
+
+addDbEntry :: MonadSelda m => [DbEntry] -> m (ID DbEntry)
+addDbEntry dbEntry = do 
+  insertWithPK entries dbEntry 
+
+
 
 
 initializeTables :: IO ()
