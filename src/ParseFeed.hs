@@ -1,9 +1,5 @@
-{-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
-
 module ParseFeed(parseFeed, Entry(..), fallbackEntry) where
 
-import GHC.Generics (Generic)
-import Database.Selda (SqlRow)
 import Text.Feed.Query
 import Text.Feed.Types
 import qualified Data.Text as T
@@ -15,9 +11,7 @@ data Entry = Entry {  title       :: T.Text
                     , source      :: T.Text
                     , pubTime     :: Maybe UTCTime
                     , description :: Maybe T.Text }
-                    deriving (Show, Eq, Generic)
-
-instance SqlRow Entry
+                    deriving (Show, Eq)
 
 parseFeed :: String -> IO [Entry]
 parseFeed url = do
