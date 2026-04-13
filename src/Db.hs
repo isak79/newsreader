@@ -99,6 +99,8 @@ initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable entries
   tryCreateTable mailboxes
   tryCreateTable mailboxEntries 
+  tryCreateTable feeds 
+  tryCreateTable mailboxFeeds
 
 -- dbActionsGetMailbox :: Col t Text -> Query t (Row t DbEntry)
 -- dbActionsGetMailbox mailboxName = do
