@@ -25,20 +25,23 @@ entries = table "entries" [ #eID   :- autoPrimary
 data DbMailbox = DbMailbox {
     mID           :: ID DbMailbox 
   , name          :: Text
-  , unreadEntries :: Int
   } deriving (Eq, Show, Generic)
 
 instance SqlRow DbMailbox
 
+mailboxes :: Table DbMailbox 
+mailboxes = table "mailboxes" [#mID :- autoPrimary]
+
 data DbFeeds = DbFeeds {
     fID :: ID DbFeeds
-  , url :: Text
+  , url :: URL
   } deriving (Eq, Show, Generic)
 
 instance SqlRow DbFeeds
 
 feeds :: Table DbFeeds
-feeds = table "feeds" [ #fID :- autoPrimary ]
+feeds = table "feeds" [ #fID :- autoPrimary
+                      , #url :- unique ]
 
 data DbMailboxFeed = DbMailboxFeed {
     mfID       :: ID DbMailboxFeed
@@ -51,8 +54,6 @@ instance SqlRow DbMailboxFeed
 mailboxFeeds :: Table DbMailboxFeed
 mailboxFeeds = table "mailboxFeeds" [ #mfID :- autoPrimary ]
 
-mailboxes :: Table DbMailbox 
-mailboxes = table "mailboxes" [#mID :- autoPrimary]
 
 data DbMailboxEntry = DbMailboxEntry {
     meID      :: ID DbMailboxEntry
@@ -68,6 +69,7 @@ mailboxEntries :: Table DbMailboxEntry
 mailboxEntries = table "mailboxEntries" [#meID :- autoPrimary]
 
 type MailboxName = Text
+type URL         = Text
 
 toDbEntry  :: Entry -> DbEntry
 toDbEntry ent = DbEntry {
@@ -92,6 +94,31 @@ fromDbEntry dbEnt = Entry {
   , description = dbDescription dbEnt
   }
 
+newMailbox :: MonadSelda m => MailboxName -> m ()
+newMailbox mailboxName = do
+  insert_ mailboxes [DbMailbox def mailboxName]
+
+addSource :: MonadSelda m => URL -> m ()
+addSource url = do
+  insert_ feeds [DbFeeds def url]
+
+addSourceToMailbox :: MonadSelda m => ID DbFeeds -> ID DbMailbox -> m ()
+addSourceToMailbox sourceID mailboxID  = do
+  insert_ mailboxFeeds [DbMailboxFeed def sourceID mailboxID]
+
+getMailboxSources :: Text -> Query t (Col t URL)
+getMailboxSources mailboxName = do
+  mailbox     <- select mailboxes
+  mailboxFeed <- select mailboxFeeds 
+  feed        <- select feeds
+
+  restrict (mailbox ! #name .== literal mailboxName)
+  restrict (mailboxFeed ! #mailboxID' .== mailbox ! #mID)
+  restrict (feed ! #fID .== mailboxFeed ! #feedID)
+
+  pure (feed ! #url)
+
+  
 
 
 initializeTables :: IO ()
