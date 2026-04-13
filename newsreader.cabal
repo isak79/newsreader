@@ -25,6 +25,7 @@ executable newsreader
     other-modules:    ParseFeed
 										, TuiApp
 										, FetchFeed
+										, Db
 
 
     build-depends:    base >=4.16 && <5
@@ -38,6 +39,7 @@ executable newsreader
 										, http-conduit
 										, bytestring
 										, http-client
+										, selda
 										, selda-sqlite
 
     -- Directories containing source files.
