@@ -24,12 +24,32 @@ entries = table "entries" [ #eID   :- autoPrimary
 
 data DbMailbox = DbMailbox {
     mID           :: ID DbMailbox 
-  , url           :: Text
   , name          :: Text
   , unreadEntries :: Int
   } deriving (Eq, Show, Generic)
 
 instance SqlRow DbMailbox
+
+data DbFeeds = DbFeeds {
+    fID :: ID DbFeeds
+  , url :: Text
+  } deriving (Eq, Show, Generic)
+
+instance SqlRow DbFeeds
+
+feeds :: Table DbFeeds
+feeds = table "feeds" [ #fID :- autoPrimary ]
+
+data DbMailboxFeed = DbMailboxFeed {
+    mfID       :: ID DbMailboxFeed
+  , feedID     :: ID DbFeeds
+  , mailboxID' :: ID DbMailbox
+  } deriving (Eq, Show, Generic)
+
+instance SqlRow DbMailboxFeed
+
+mailboxFeeds :: Table DbMailboxFeed
+mailboxFeeds = table "mailboxFeeds" [ #mfID :- autoPrimary ]
 
 mailboxes :: Table DbMailbox 
 mailboxes = table "mailboxes" [#mID :- autoPrimary]
@@ -74,11 +94,11 @@ fromDbEntry dbEnt = Entry {
 
 
 
--- dbActionsAdd :: (MonadIO m, MonadMask m) => Text -> [Entry] -> m ()
--- dbActionsAdd mailboxName ents = withSQLite "newsreader.sqlite" $ do
---   let dbEnts = map (toDbEntry mailboxName) ents
---   createTable entries
-  -- insert_ entries dbEnts
+initializeTables :: IO ()
+initializeTables = withSQLite "newsreader.sqlite" $ do
+  tryCreateTable entries
+  tryCreateTable mailboxes
+  tryCreateTable mailboxEntries 
 
 -- dbActionsGetMailbox :: Col t Text -> Query t (Row t DbEntry)
 -- dbActionsGetMailbox mailboxName = do
