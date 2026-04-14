@@ -10,7 +10,8 @@ import FetchFeed
 data Entry = Entry {  title       :: T.Text
                     , source      :: T.Text
                     , pubTime     :: Maybe UTCTime
-                    , description :: Maybe T.Text }
+                    , description :: Maybe T.Text 
+                    , isRead        :: Bool }
                     deriving (Show, Eq)
 
 parseFeed :: T.Text -> IO [Entry]
@@ -26,7 +27,7 @@ toEntry i = do
   pubTime     <- getItemPublishDate i
   let title  = T.strip title0
       source = cleanUrl source0
-  pure Entry { title, source, pubTime, description }
+  pure Entry { title, source, pubTime, description, isRead = False }
 
 cleanUrl :: T.Text -> T.Text
 cleanUrl t = case T.words t of
@@ -37,7 +38,8 @@ fallbackEntry :: Entry
 fallbackEntry = Entry { title = T.pack "Nothing to show"
                       , source = T.pack "Nothing to show"
                       , pubTime = Nothing
-                      , description = Nothing }
+                      , description = Nothing
+                      , isRead = False }
 
 entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
