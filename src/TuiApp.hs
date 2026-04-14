@@ -110,8 +110,8 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  entriesVG   <- parseFeed "https://www.vg.no/rss/feed/?format=rss"
-  entriesNYT  <- parseFeed "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+  entriesVG   <- parseFeed $ T.pack "https://www.vg.no/rss/feed/?format=rss"
+  entriesNYT  <- parseFeed $ T.pack "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
   pure TuiState { currentDisplay = ShowMailboxList
                 , showDesc       = False 
                 , showHelp       = False 

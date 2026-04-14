@@ -13,7 +13,7 @@ data Entry = Entry {  title       :: T.Text
                     , description :: Maybe T.Text }
                     deriving (Show, Eq)
 
-parseFeed :: String -> IO [Entry]
+parseFeed :: T.Text -> IO [Entry]
 parseFeed url = do
   feed <- fetchFeed url
   entries feed
