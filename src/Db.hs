@@ -57,8 +57,8 @@ mailboxFeeds = table "mailboxFeeds" [ #mfID :- autoPrimary ]
 
 data DbMailboxEntry = DbMailboxEntry {
     meID      :: ID DbMailboxEntry
-  , entryID   :: ID DbEntry
   , mailboxID :: ID DbMailbox
+  , entryID   :: ID DbEntry
   , isRead    :: Bool
   } deriving (Show, Eq, Generic)
 
@@ -115,7 +115,7 @@ addSourceToMailbox url mailboxName  = do
 
   insert_ mailboxFeeds [DbMailboxFeed def feedID mailboxID]
 
-refreshMailbox :: MonadSelda m => MailboxName -> m Int
+-- refreshMailbox :: MonadSelda m => MailboxName -> m Int
 refreshMailbox mailboxName = do
   mailboxSources <- query $ do 
     mailbox <- select mailboxes
@@ -125,9 +125,18 @@ refreshMailbox mailboxName = do
     feed <- select feeds
     restrict (feed ! #fID .== mailboxFeed ! #feedID)
     pure (feed ! #url)
+  mid :: [ID DbMailbox] <- query $ do
+    mailbox <- select mailboxes
+    restrict (mailbox ! #name .== literal mailboxName)
+    pure (mailbox ! #mID)
   feed <- liftIO $ concat <$> traverse parseFeed mailboxSources
   let dbFeed = map toDbEntry feed
-  insert entries dbFeed
+  entryIDs <- mapM (insertWithPK entries) $ map (\x -> [x]) dbFeed
+  insert_ mailboxEntries (map (dbMailboxEntry (head mid)) entryIDs)
+    where
+      dbMailboxEntry :: ID DbMailbox -> ID DbEntry -> DbMailboxEntry
+      dbMailboxEntry mailboxID entryID = DbMailboxEntry def mailboxID entryID False
+      
 
 
 addSourceAndMailbox :: MonadSelda m => MailboxName -> URL -> m ()
