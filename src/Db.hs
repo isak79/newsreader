@@ -4,7 +4,7 @@ module Db where
 
 import Database.Selda
 import Database.Selda.SQLite
-import ParseFeed (Entry(..))
+import ParseFeed (Entry(..), parseFeed)
 
 data DbEntry = DbEntry 
   {
@@ -60,7 +60,6 @@ data DbMailboxEntry = DbMailboxEntry {
   , entryID   :: ID DbEntry
   , mailboxID :: ID DbMailbox
   , isRead    :: Bool
-  , addedAt   :: UTCTime
   } deriving (Show, Eq, Generic)
 
 instance SqlRow DbMailboxEntry 
@@ -106,14 +105,12 @@ addSourceToMailbox :: MonadSelda m => ID DbFeeds -> ID DbMailbox -> m ()
 addSourceToMailbox sourceID mailboxID  = do
   insert_ mailboxFeeds [DbMailboxFeed def sourceID mailboxID]
 
-getMailboxSources :: Text -> Query t (Col t URL)
-getMailboxSources mailboxName = do
-  mailbox     <- select mailboxes
+getMailboxSources :: Col t (ID DbMailbox) -> Query t (Col t Text)
+getMailboxSources mailboxID = do
   mailboxFeed <- select mailboxFeeds 
   feed        <- select feeds
 
-  restrict (mailbox ! #name .== literal mailboxName)
-  restrict (mailboxFeed ! #mailboxID' .== mailbox ! #mID)
+  restrict (mailboxFeed ! #mailboxID' .== mailboxID)
   restrict (feed ! #fID .== mailboxFeed ! #feedID)
 
   pure (feed ! #url)
@@ -123,6 +120,26 @@ addDbEntry :: MonadSelda m => [DbEntry] -> m (ID DbEntry)
 addDbEntry dbEntry = do 
   insertWithPK entries dbEntry 
 
+addDbMailboxEntry x = do
+  insert_ mailboxEntries x
+
+refreshMailbox mailboxName = do
+  mailboxSources <- query $ do 
+    mailbox <- select mailboxes
+    restrict (mailbox ! #name .== literal mailboxName)
+    mailboxFeed <- select mailboxFeeds 
+    restrict (mailboxFeed ! #mailboxID' .== mailbox ! #mID)
+    feed <- select feeds
+    restrict (feed ! #fID .== mailboxFeed ! #feedID)
+    pure (feed ! #url)
+  let feeds = map parseFeed mailboxSources
+  pure "hei"
+
+
+addSourceAndMailbox mailboxName url = do
+  mailboxID <- insertWithPK mailboxes [DbMailbox def mailboxName]
+  sourceID <- insertWithPK feeds [DbFeeds def url]
+  insert_ mailboxFeeds [DbMailboxFeed def sourceID mailboxID]
 
 
 
