@@ -132,8 +132,9 @@ refreshMailbox mailboxName = do
     feed <- select feeds
     restrict (feed ! #fID .== mailboxFeed ! #feedID)
     pure (feed ! #url)
-  let feeds = map parseFeed mailboxSources
-  pure "hei"
+  feed <- liftIO $ concat <$> traverse parseFeed mailboxSources
+  let dbFeed = map toDbEntry feed
+  insert entries dbFeed
 
 
 addSourceAndMailbox mailboxName url = do
