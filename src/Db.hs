@@ -101,9 +101,28 @@ addSource :: MonadSelda m => URL -> m ()
 addSource url = do
   insert_ feeds [DbFeeds def url]
 
-addSourceToMailbox :: MonadSelda m => ID DbFeeds -> ID DbMailbox -> m ()
-addSourceToMailbox sourceID mailboxID  = do
-  insert_ mailboxFeeds [DbMailboxFeed def sourceID mailboxID]
+addSourceToMailbox :: MonadSelda m => URL -> MailboxName -> m ()
+addSourceToMailbox url mailboxName  = do
+  mids :: [ID DbMailbox] <- query $ do
+    mailbox <- select mailboxes
+    restrict (mailbox ! #name .== literal mailboxName)
+    pure (mailbox ! #mID)
+
+  mailboxID <- case mids of
+    (x:_) -> pure x
+    []    -> do insertWithPK mailboxes [DbMailbox def mailboxName]
+
+
+  sids :: [ID DbFeeds] <- query $ do
+    feed <- select feeds
+    restrict (feed ! #url .== literal url)
+    pure (feed ! #fID)
+
+  feedID <- case sids of
+    (x:_) -> pure x
+    []    -> do insertWithPK feeds [DbFeeds def url]
+
+  insert_ mailboxFeeds [DbMailboxFeed def feedID mailboxID]
 
 getMailboxSources :: Col t (ID DbMailbox) -> Query t (Col t Text)
 getMailboxSources mailboxID = do
