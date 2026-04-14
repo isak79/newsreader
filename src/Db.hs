@@ -28,8 +28,8 @@ dbEntries = table "entries" [ #eID   :- autoPrimary
                             , #dedup :- unique]
 
 
-toDbEntry  :: Entry -> DbEntry
-toDbEntry ent = DbEntry {
+toDbEntry  ::  ID DbFeeds -> Entry -> DbEntry
+toDbEntry feedid ent = DbEntry {
     eID           = def
   , dbTitle       = title'
   , dbSource      = source'
@@ -37,7 +37,7 @@ toDbEntry ent = DbEntry {
   , dbDescription = description ent
   , dedup         = dedupString
   , dbIsRead      = isRead ent
-  , feedID        = def
+  , feedID        = feedid
   }
   where 
     title'  = title ent
@@ -73,30 +73,48 @@ data DbFeeds = DbFeeds {
 
 instance SqlRow DbFeeds
 
-feeds :: Table DbFeeds
-feeds = table "feeds" [ #fID :- autoPrimary
+dbFeeds :: Table DbFeeds
+dbFeeds = table "feeds" [ #fID :- autoPrimary
                       , #url :- unique ]
 
 
 
 addFeedToMailbox :: (MonadIO m, MonadMask m) => URL -> Text -> m ()
 addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
-  mid <- query $ do
-    mailbox <- select dbMailboxes
-    restrict (mailbox ! #name .== literal mailboxName)
-    pure (mailbox ! #mID)
-
+  mid <- mailboxIDfromName mailboxName
   mailboxID <- case mid of
     (x:_) -> pure x
     []    -> insertWithPK dbMailboxes [DbMailbox def mailboxName]
 
-  insert_ feeds [DbFeeds def mailboxID url]
+  insert_ dbFeeds [DbFeeds def mailboxID url]
 
+refreshAll :: IO [(URL, ID DbFeeds)]
+refreshAll = withSQLite "newsreader.sqlite" $ do
+  urls <- someQuery 
+  pure urls
+
+someQuery :: MonadSelda m => m [(URL, ID DbFeeds)]
+someQuery = do
+  fs <- query $ select dbFeeds
+  pure [ (url f, fID f) | f <- fs ]
+
+storeEntries :: (MonadIO m, MonadMask m) => [Entry] -> ID DbFeeds -> m ()
+storeEntries ents feedID = withSQLite "newsreader.sqlite"  $ do
+  let dbEntries0 = map (toDbEntry feedID) ents
+  insert_ dbEntries dbEntries0
+  
+
+
+mailboxIDfromName :: MonadSelda m => MailboxName -> m [ID DbMailbox]
+mailboxIDfromName mailboxName = query $ do
+    mailbox <- select dbMailboxes
+    restrict (mailbox ! #name .== literal mailboxName)
+    pure (mailbox ! #mID)
     
 
 initializeTables :: IO ()
 initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable dbEntries
   tryCreateTable dbMailboxes
-  tryCreateTable feeds 
+  tryCreateTable dbFeeds 
 
