@@ -84,7 +84,6 @@ toDbEntry ent = DbEntry {
     source' = source ent
     dedupString = title' <> "\x1f" <> source'
 
-
 fromDbEntry :: DbEntry -> Entry
 fromDbEntry dbEnt = Entry {
     title       = dbTitle dbEnt
@@ -92,14 +91,6 @@ fromDbEntry dbEnt = Entry {
   , pubTime     = dbPubTime dbEnt
   , description = dbDescription dbEnt
   }
-
-newMailbox :: MonadSelda m => MailboxName -> m ()
-newMailbox mailboxName = do
-  insert_ mailboxes [DbMailbox def mailboxName]
-
-addSource :: MonadSelda m => URL -> m ()
-addSource url = do
-  insert_ feeds [DbFeeds def url]
 
 addSourceToMailbox :: MonadSelda m => URL -> MailboxName -> m ()
 addSourceToMailbox url mailboxName  = do
@@ -124,24 +115,7 @@ addSourceToMailbox url mailboxName  = do
 
   insert_ mailboxFeeds [DbMailboxFeed def feedID mailboxID]
 
-getMailboxSources :: Col t (ID DbMailbox) -> Query t (Col t Text)
-getMailboxSources mailboxID = do
-  mailboxFeed <- select mailboxFeeds 
-  feed        <- select feeds
-
-  restrict (mailboxFeed ! #mailboxID' .== mailboxID)
-  restrict (feed ! #fID .== mailboxFeed ! #feedID)
-
-  pure (feed ! #url)
-
-
-addDbEntry :: MonadSelda m => [DbEntry] -> m (ID DbEntry)
-addDbEntry dbEntry = do 
-  insertWithPK entries dbEntry 
-
-addDbMailboxEntry x = do
-  insert_ mailboxEntries x
-
+refreshMailbox :: MonadSelda m => MailboxName -> m Int
 refreshMailbox mailboxName = do
   mailboxSources <- query $ do 
     mailbox <- select mailboxes
@@ -156,12 +130,24 @@ refreshMailbox mailboxName = do
   insert entries dbFeed
 
 
+addSourceAndMailbox :: MonadSelda m => MailboxName -> URL -> m ()
 addSourceAndMailbox mailboxName url = do
   mailboxID <- insertWithPK mailboxes [DbMailbox def mailboxName]
   sourceID <- insertWithPK feeds [DbFeeds def url]
   insert_ mailboxFeeds [DbMailboxFeed def sourceID mailboxID]
 
-
+getEntries :: MonadSelda m => MailboxName -> m [Entry]
+getEntries mailboxName = do
+  dbEntries <- query $ do
+    mailbox <- select mailboxes
+    restrict (mailbox ! #name .== literal mailboxName)
+    mailboxEntry <- select mailboxEntries
+    restrict (mailboxEntry ! #mailboxID .== mailbox ! #mID)
+    entry <- select entries
+    restrict (entry ! #eID .== mailboxEntry ! #entryID)
+    pure entry
+  pure (map fromDbEntry dbEntries)
+  
 
 initializeTables :: IO ()
 initializeTables = withSQLite "newsreader.sqlite" $ do
@@ -170,12 +156,4 @@ initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable mailboxEntries 
   tryCreateTable feeds 
   tryCreateTable mailboxFeeds
-
--- dbActionsGetMailbox :: Col t Text -> Query t (Row t DbEntry)
--- dbActionsGetMailbox mailboxName = do
---    dbEnts <- select entries 
---    restrict (dbEnts ! #mailboxName .== mailboxName)
---    return dbEnts
-
-
 
