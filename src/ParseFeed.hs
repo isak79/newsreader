@@ -7,6 +7,8 @@ import Data.Time (UTCTime)
 import Data.Maybe (mapMaybe)
 import FetchFeed
 
+type URL = T.Text
+
 data Entry = Entry {  title       :: T.Text
                     , source      :: T.Text
                     , pubTime     :: Maybe UTCTime
@@ -14,7 +16,7 @@ data Entry = Entry {  title       :: T.Text
                     , isRead        :: Bool }
                     deriving (Show, Eq)
 
-parseFeed :: T.Text -> IO [Entry]
+parseFeed :: URL -> IO [Entry]
 parseFeed url = do
   feed <- fetchFeed url
   entries feed

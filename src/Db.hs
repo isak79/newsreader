@@ -4,7 +4,7 @@ module Db where
 
 import Database.Selda
 import Database.Selda.SQLite
-import ParseFeed (Entry(..), parseFeed)
+import ParseFeed (parseFeed, Entry(..), parseFeed)
 
 type MailboxName = Text
 type URL         = Text
@@ -88,21 +88,17 @@ addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
 
   insert_ dbFeeds [DbFeeds def mailboxID url]
 
-refreshAll :: IO [(URL, ID DbFeeds)]
+refreshAll :: IO ()
 refreshAll = withSQLite "newsreader.sqlite" $ do
-  urls <- someQuery 
-  pure urls
+  urlFids <- queryUrlsAndFeedIDs 
+  dbEntries0 <- concat <$> traverse (\(url, fid) -> liftIO $ map (toDbEntry fid) <$> parseFeed url) urlFids 
+  insert_ dbEntries dbEntries0
 
-someQuery :: MonadSelda m => m [(URL, ID DbFeeds)]
-someQuery = do
+
+queryUrlsAndFeedIDs :: MonadSelda m => m [(URL, ID DbFeeds)]
+queryUrlsAndFeedIDs = do
   fs <- query $ select dbFeeds
   pure [ (url f, fID f) | f <- fs ]
-
-storeEntries :: (MonadIO m, MonadMask m) => [Entry] -> ID DbFeeds -> m ()
-storeEntries ents feedID = withSQLite "newsreader.sqlite"  $ do
-  let dbEntries0 = map (toDbEntry feedID) ents
-  insert_ dbEntries dbEntries0
-  
 
 
 mailboxIDfromName :: MonadSelda m => MailboxName -> m [ID DbMailbox]
