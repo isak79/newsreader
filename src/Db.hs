@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db where
+module Db(fetchEntries) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -111,9 +111,11 @@ initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable dbMailboxes
   tryCreateTable dbFeeds 
 
-fetchMailboxes :: (MonadMask m, MonadIO m) => m [DbMailbox]
+fetchMailboxes :: (MonadMask m, MonadIO m) => m [MailboxName]
 fetchMailboxes = withSQLite "newsreader.sqlite" $ do
-  query $ select dbMailboxes 
+  mb <- query $ select dbMailboxes 
+  pure (map name mb)
+
 
 fetchEntries :: (MonadMask m, MonadIO m) => Text -> m [Entry]
 fetchEntries mailboxName = withSQLite "newsreader.sqlite" $ do
