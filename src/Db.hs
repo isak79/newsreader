@@ -111,6 +111,9 @@ initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable dbMailboxes
   tryCreateTable dbFeeds 
 
+fetchMailboxes :: (MonadMask m, MonadIO m) => m [DbMailbox]
+fetchMailboxes = withSQLite "newsreader.sqlite" $ do
+  query $ select dbMailboxes 
 
 fetchEntries :: (MonadMask m, MonadIO m) => Text -> m [Entry]
 fetchEntries mailboxName = withSQLite "newsreader.sqlite" $ do
