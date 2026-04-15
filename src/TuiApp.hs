@@ -11,6 +11,7 @@ import System.Info
 import Data.Time (UTCTime)
 import Data.Maybe (fromJust)
 import Brick.Widgets.Center (hCenter, hCenterLayer)
+import Db
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -110,8 +111,8 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  entriesVG   <- parseFeed $ T.pack "https://www.vg.no/rss/feed/?format=rss"
-  entriesNYT  <- parseFeed $ T.pack "https://rss.nytimes.com/services/xml/rss/nyt/HomePage.xml"
+  entriesVG   <- fetchEntries $ T.pack "VG"
+  entriesNYT  <- fetchEntries $ T.pack "NYT"
   pure TuiState { currentDisplay = ShowMailboxList
                 , showDesc       = False 
                 , showHelp       = False 
