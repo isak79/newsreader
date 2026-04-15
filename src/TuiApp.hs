@@ -111,19 +111,17 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  entriesVG   <- fetchEntries $ T.pack "VG"
-  entriesNYT  <- fetchEntries $ T.pack "NYT"
+  mbs <- fetchMailboxes 
+  mailboxes <- traverse mkMailbox mbs
   pure TuiState { currentDisplay = ShowMailboxList
                 , showDesc       = False 
                 , showHelp       = False 
-                , mailBoxes      = fromJust $ fromList [
-                  ("VG", removeJust $ fromList entriesVG)
-                , ("NYT", removeJust $ fromList entriesNYT)
-                ] }
+                , mailBoxes      = fromJust (fromList mailboxes) }
       where
-        removeJust n = case n of
-          Just k  -> k
-          Nothing -> fromJust $ fromList [ fallbackEntry ] 
+        mkMailbox mbName = do
+          e <- fetchEntries mbName
+          let mb = maybe (fromJust $ fromList [fallbackEntry]) id (fromList e)
+          pure (T.unpack mbName, mb)
 
 -- setMailBox :: MailBoxes -> TuiState -> TuiState
 -- setMailBox mb ts = ts { mailBoxes = mb }

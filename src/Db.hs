@@ -1,12 +1,11 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries) where
+module Db(fetchEntries, fetchMailboxes) where
 
 import Database.Selda
 import Database.Selda.SQLite
 import ParseFeed (parseFeed, Entry(..), parseFeed)
 
-type MailboxName = Text
 type URL         = Text
 
 data DbEntry = DbEntry 
@@ -98,7 +97,7 @@ refreshAll = withSQLite "newsreader.sqlite" $ do
         pure [ (url f, fID f) | f <- fs ]
       
 
-mailboxIDfromName :: MonadSelda m => MailboxName -> m [ID DbMailbox]
+mailboxIDfromName :: MonadSelda m => Text -> m [ID DbMailbox]
 mailboxIDfromName mailboxName = query $ do
     mailbox <- select dbMailboxes
     restrict (mailbox ! #name .== literal mailboxName)
@@ -111,7 +110,7 @@ initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable dbMailboxes
   tryCreateTable dbFeeds 
 
-fetchMailboxes :: (MonadMask m, MonadIO m) => m [MailboxName]
+fetchMailboxes :: (MonadMask m, MonadIO m) => m [Text]
 fetchMailboxes = withSQLite "newsreader.sqlite" $ do
   mb <- query $ select dbMailboxes 
   pure (map name mb)
