@@ -120,7 +120,7 @@ buildState = do
       where
         mkMailbox mbName = do
           e <- fetchEntries mbName
-          let mb = maybe (fromJust $ fromList [fallbackEntry]) id (fromList e)
+          let mb = maybe (Zipper [] fallbackEntry []) id (fromList e)
           pure (T.unpack mbName, mb)
 
 -- setMailBox :: MailBoxes -> TuiState -> TuiState

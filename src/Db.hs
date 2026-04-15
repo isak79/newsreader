@@ -5,7 +5,6 @@ module Db(fetchEntries, fetchMailboxes) where
 import Database.Selda
 import Database.Selda.SQLite
 import ParseFeed (parseFeed, Entry(..), parseFeed)
-
 type URL         = Text
 
 data DbEntry = DbEntry 
@@ -74,7 +73,7 @@ instance SqlRow DbFeeds
 
 dbFeeds :: Table DbFeeds
 dbFeeds = table "feeds" [ #fID :- autoPrimary
-                      , #url :- unique ]
+                        , #url :- unique ]
 
 addFeedToMailbox :: (MonadIO m, MonadMask m) => URL -> Text -> m ()
 addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
