@@ -84,11 +84,11 @@ addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
 
   insert_ dbFeeds [DbFeeds def mailboxID url]
 
-refreshAll :: IO ()
+refreshAll :: IO Bool
 refreshAll = withSQLite "newsreader.sqlite" $ do
   urlFids <- queryUrlsAndFeedIDs 
   dbEntries0 <- concat <$> traverse (\(url, fid) -> liftIO $ map (toDbEntry fid) <$> parseFeed url) urlFids 
-  insert_ dbEntries dbEntries0
+  tryInsert dbEntries dbEntries0
     where  
       queryUrlsAndFeedIDs :: MonadSelda m => m [(URL, ID DbFeeds)]
       queryUrlsAndFeedIDs = do
