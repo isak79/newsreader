@@ -42,6 +42,7 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO refreshAll 
 handleTuiEvent _                                     = pure ()
 
 

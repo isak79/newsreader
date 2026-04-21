@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes) where
+module Db(fetchEntries, fetchMailboxes, refreshAll) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -84,12 +84,13 @@ addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
 
   insert_ dbFeeds [DbFeeds def mailboxID url]
 
-refreshAll :: IO [ Bool ]
+refreshAll :: IO ()
 refreshAll = withSQLite "newsreader.sqlite" $ do
   urlFids <- queryUrlsAndFeedIDs 
   dbEntries0 <- concat <$> traverse (\(url, fid) -> liftIO $ map (toDbEntry fid) <$> parseFeed url) urlFids 
   let dbEntries1 = map (:[]) dbEntries0 
   traverse (tryInsert dbEntries) dbEntries1
+  pure ()
     where  
       queryUrlsAndFeedIDs :: MonadSelda m => m [(URL, ID DbFeeds)]
       queryUrlsAndFeedIDs = do

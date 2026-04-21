@@ -11,7 +11,6 @@ fetchBytes :: Text -> IO L8.ByteString
 fetchBytes url = do
   req <- parseRequest $ unpack url
   resp <- httpLBS req
-  putStrLn $ "Status: " ++ show (getResponseStatusCode resp)
   pure (getResponseBody resp)
 
 fetchFeed :: Text -> IO (Maybe Feed)
