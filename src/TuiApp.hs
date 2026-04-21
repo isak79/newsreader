@@ -42,8 +42,14 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = liftIO refreshAll 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = refillMailboxes 
 handleTuiEvent _                                     = pure ()
+
+refillMailboxes :: EventM ResourceName TuiState ()
+refillMailboxes = do
+  liftIO refreshAll 
+  mb <- liftIO $ fillMailboxes 
+  modify $ setMailBoxes mb
 
 
 data Dir = Next | Prev | Top | Bottom
@@ -112,12 +118,18 @@ setShowHelp b t = t { showHelp = b}
 
 buildState :: IO TuiState
 buildState = do
-  mbs <- fetchMailboxes 
-  mailboxes <- traverse mkMailbox mbs
+  mailboxes <- fillMailboxes 
   pure TuiState { currentDisplay = ShowMailboxList
                 , showDesc       = False 
                 , showHelp       = False 
-                , mailBoxes      = fromJust (fromList mailboxes) }
+                , mailBoxes      = mailboxes }
+
+fillMailboxes :: IO MailBoxes
+fillMailboxes = do
+  mbs <- fetchMailboxes 
+  mailboxes0 <- traverse mkMailbox mbs
+  let mailboxes = fromJust $ fromList mailboxes0
+  pure mailboxes
       where
         mkMailbox mbName = do
           e <- fetchEntries mbName
