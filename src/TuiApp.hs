@@ -8,10 +8,12 @@ import Brick.Widgets.Border
 import System.Process (callProcess)
 import Control.Monad.IO.Class (liftIO)
 import System.Info
-import Data.Time (UTCTime)
-import Data.Maybe (fromJust)
+import Data.Time (UTCTime (UTCTime), fromGregorian, secondsToDiffTime)
+import qualified Data.Maybe as M
 import Brick.Widgets.Center (hCenter, hCenterLayer)
+import qualified Data.Ord as D
 import Db
+import qualified Data.List as L
 
 titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
 titleAttr = attrName "title"
@@ -48,7 +50,7 @@ handleTuiEvent _                                     = pure ()
 refillMailboxes :: EventM ResourceName TuiState ()
 refillMailboxes = do
   liftIO refreshAll 
-  mb <- liftIO $ fillMailboxes 
+  mb <- liftIO fillMailboxes 
   modify $ setMailBoxes mb
 
 
@@ -128,13 +130,16 @@ fillMailboxes :: IO MailBoxes
 fillMailboxes = do
   mbs <- fetchMailboxes 
   mailboxes0 <- traverse mkMailbox mbs
-  let mailboxes = fromJust $ fromList mailboxes0
+  let mailboxes = M.fromJust $ fromList mailboxes0
   pure mailboxes
       where
         mkMailbox mbName = do
           e <- fetchEntries mbName
-          let mb = maybe (Zipper [] fallbackEntry []) id (fromList e)
+          let mb = maybe (Zipper [] fallbackEntry []) id (fromList $ entrySort e)
           pure (T.unpack mbName, mb)
+        entrySort = L.sortOn (D.Down . M.maybe epoch id . pubTime)
+        epoch = UTCTime (fromGregorian 1 1 1970) (secondsToDiffTime 0)
+
 
 -- setMailBox :: MailBoxes -> TuiState -> TuiState
 -- setMailBox mb ts = ts { mailBoxes = mb }
@@ -161,14 +166,14 @@ firstItem :: Zipper a -> Zipper a
 firstItem z@(Zipper [] _ _) = z
 firstItem (Zipper xs y zs)  = Zipper [] r (reverse h ++ y:zs)
   where
-    (h,r) = fromJust $ unsnoc xs
+    (h,r) = M.fromJust $ unsnoc xs
 
 
 lastItem :: Zipper a -> Zipper a
 lastItem z@(Zipper _ _ []) = z
 lastItem (Zipper xs y zs)  = Zipper (reverse h ++ y:xs) r []
   where
-    (h,r) = fromJust $ unsnoc zs
+    (h,r) = M.fromJust $ unsnoc zs
 
 
 nextItem :: Zipper a -> Zipper a
@@ -267,7 +272,7 @@ drawEntry showDesc currEnt ent =
     drawTime Nothing  = emptyWidget 
     drawTime (Just t) = str $ show t
     desc :: Widget n
-    desc = if showDesc && current && hasDescription then txtWrap $ fromJust $ description ent else emptyWidget 
+    desc = if showDesc && current && hasDescription then txtWrap $ M.fromJust $ description ent else emptyWidget 
     hasDescription = case description ent of
       Nothing -> False
       Just _  -> True
@@ -276,8 +281,8 @@ drawHelp :: Bool -> Widget n
 drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
               hBox 
                 [padRight Max $ 
-                    vBox [hCenter $ str x | x <- ["j","k","<enter>","g","G","d","?","-"]], 
-                    vBox [hCenter $ str x | x <- [nextItem',prevItem',goTo,"goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]]
+                    vBox [hCenter $ str x | x <- ["q","j","k","<enter>","g","G","d","?","-"]], 
+                    vBox [hCenter $ str x | x <- ["exitApp",nextItem',prevItem',goTo,"goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]]
                 ]
                 where
                   goTo = if box then "goToUrl" else "goToMailbox"

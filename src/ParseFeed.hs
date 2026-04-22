@@ -13,7 +13,7 @@ data Entry = Entry {  title       :: T.Text
                     , source      :: T.Text
                     , pubTime     :: Maybe UTCTime
                     , description :: Maybe T.Text 
-                    , isRead        :: Bool }
+                    , isRead      :: Bool }
                     deriving (Show, Eq)
 
 parseFeed :: URL -> IO [Entry]
