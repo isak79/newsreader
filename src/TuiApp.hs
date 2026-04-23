@@ -40,6 +40,8 @@ handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem Next
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem Prev
+handleTuiEvent (VtyEvent (V.EvKey V.KDown []))       = switchItem Next
+handleTuiEvent (VtyEvent (V.EvKey V.KUp []))         = switchItem Prev
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = switchItem Top 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
