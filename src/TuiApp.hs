@@ -263,19 +263,19 @@ drawMailBox ts = viewport ResourceName Vertical
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =  
-  toView $ overrideAttr borderAttr blueAttr $ border $ padRight Max $ vBox 
+  toView $ overrideAttr borderAttr (if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox 
       [
         hBox [
               drawField (title ent) a 
             , padLeft Max $ withAttr b $ drawTime (pubTime ent) 
             ]
       , padRight (Pad 30) $ padTop (Pad 1) $ padBottom (Pad 1) desc
-      , drawField (source ent) (if (not $ isRead ent) then sourceAttr else readAttr)
+      , drawField (source ent) (if not $ isRead ent then sourceAttr else readAttr)
       ]
   where 
     current = currEnt == ent
     a :: AttrName
-    a = if current then greenAttr else blueAttr 
+    a = if current then greenAttr else (if not $ isRead ent then blueAttr else readAttr) 
     b :: AttrName
     b = if current then greenAttr else timeAttr
     toView :: Widget n -> Widget n
