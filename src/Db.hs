@@ -130,6 +130,8 @@ fetchEntries mailboxName = withSQLite "newsreader.sqlite" $ do
   pure $ map fromDbEntry result
 
 
-readEntry :: Entry -> IO ()
-readEntry ent = withSQLite "newsreader.sqlite" $ do
-  update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := true])
+readEntry :: Bool -> Entry -> IO ()
+readEntry b ent = withSQLite "newsreader.sqlite" $ do
+  case b of 
+    True  -> update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := true])
+    False -> update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := false])

@@ -1,6 +1,6 @@
 module TuiApp(runApp) where
 
-import ParseFeed (parseFeed, Entry(..), fallbackEntry)
+import ParseFeed (Entry(..), fallbackEntry)
 import Brick
 import qualified Graphics.Vty as V
 import qualified Data.Text as T
@@ -46,7 +46,10 @@ handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
 handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = refillMailboxes 
+handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = modify $ setButtonPressed None
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR 
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
+handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
 handleTuiEvent _                                     = pure ()
 
 refillMailboxes :: EventM ResourceName TuiState ()
@@ -54,6 +57,24 @@ refillMailboxes = do
   liftIO refreshAll 
   mb <- liftIO fillMailboxes 
   modify $ setMailBoxes mb
+
+pressU = do
+  bp <- gets buttonPressed 
+  case bp of
+    Button 'm' -> do
+      markEntry False
+    _ -> return ()        
+
+pressR = do
+  bp <- gets buttonPressed 
+  case bp of
+    Button 'm' -> do
+      markEntry True
+      modify $ setButtonPressed None
+    _       -> refillMailboxes 
+
+setButtonPressed :: ButtonPressed Char -> TuiState -> TuiState
+setButtonPressed c t = t { buttonPressed = c }
 
 
 data Dir = Next | Prev | Top | Bottom
@@ -97,17 +118,23 @@ setCurrentDisplay cd ts = ts { currentDisplay = cd }
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
   mailBoxes   <- gets mailBoxes
+  let currEntry = getCurrent $ snd $ getCurrent mailBoxes 
+  markEntry True
+  liftIO $ openUrl $ T.unpack $ source currEntry
+  pure ()
+
+markEntry b = do
+  mailBoxes   <- gets mailBoxes
   let currMailboxTuple = getCurrent mailBoxes 
   let currMailbox = snd $ currMailboxTuple 
   let currEntry = getCurrent currMailbox 
-  let readCurrentry = setRead True currEntry 
+  let readCurrentry = setRead b currEntry 
   let updatedCurrMailbox = updateCurrentItem readCurrentry currMailbox 
   let updatedMailboxtuple = (fst currMailboxTuple, updatedCurrMailbox)
   let newMailboxes = updateCurrentItem updatedMailboxtuple mailBoxes
-  liftIO $ readEntry currEntry 
+  liftIO $ readEntry b currEntry 
   modify $ setMailBoxes newMailboxes 
-  liftIO $ openUrl $ T.unpack $ source currEntry
-  pure ()
+
 
 setRead :: Bool -> Entry -> Entry
 setRead b e = e { isRead = b }
@@ -136,7 +163,8 @@ buildState = do
   pure TuiState { currentDisplay = ShowMailboxList
                 , showDesc       = False 
                 , showHelp       = False 
-                , mailBoxes      = mailboxes }
+                , mailBoxes      = mailboxes
+                , buttonPressed  = None }
 
 fillMailboxes :: IO MailBoxes
 fillMailboxes = do
@@ -219,10 +247,13 @@ type MailBoxes   = Zipper (MailboxName, Mailbox)
 
 data CurrentDisplay = ShowMailboxList | ShowEntries
 
+data ButtonPressed x = Button x | None
+
 data TuiState = TuiState { currentDisplay :: CurrentDisplay
                          , showDesc       :: Bool 
                          , showHelp       :: Bool 
-                         , mailBoxes      :: MailBoxes  }
+                         , mailBoxes      :: MailBoxes
+                         , buttonPressed  :: ButtonPressed Char }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
