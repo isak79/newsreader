@@ -15,18 +15,20 @@ import qualified Data.Ord as D
 import Db
 import qualified Data.List as L
 
-titleAttr, selectedTitleAttr, sourceAttr, timeAttr :: AttrName
-titleAttr = attrName "title"
-selectedTitleAttr = attrName "selectedTitle"
+blueAttr, greenAttr, sourceAttr, timeAttr, readAttr :: AttrName
+readAttr = attrName "readBorder"
+blueAttr = attrName "title"
+greenAttr = attrName "selectedTitle"
 sourceAttr = attrName "source"
 timeAttr = attrName "time"
 
 runApp :: IO ()
 runApp = do
   tuiState <- buildState
-  let app = App { appAttrMap      = const $ attrMap V.defAttr [ (titleAttr, fg V.blue)
-                                                              , (selectedTitleAttr, fg V.green)
-                                                              , (sourceAttr, fg V.yellow) ]
+  let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
+                                                              , (greenAttr, fg V.green)
+                                                              , (sourceAttr, fg V.yellow) 
+                                                              , (borderAttr, fg V.white) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
@@ -95,10 +97,19 @@ setCurrentDisplay cd ts = ts { currentDisplay = cd }
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
   mailBoxes   <- gets mailBoxes
-  let currEntry = getCurrent $ snd $ getCurrent mailBoxes
+  let currMailboxTuple = getCurrent mailBoxes 
+  let currMailbox = snd $ currMailboxTuple 
+  let currEntry = getCurrent currMailbox 
+  let readCurrentry = setRead True currEntry 
+  let updatedCurrMailbox = updateCurrentItem readCurrentry currMailbox 
+  let updatedMailboxtuple = (fst currMailboxTuple, updatedCurrMailbox)
+  let newMailboxes = updateCurrentItem updatedMailboxtuple mailBoxes
+  modify $ setMailBoxes newMailboxes 
   liftIO $ openUrl $ T.unpack $ source currEntry
   pure ()
 
+setRead :: Bool -> Entry -> Entry
+setRead b e = e { isRead = b }
 
 openUrl :: String -> IO ()
 openUrl url = case os of
@@ -138,7 +149,7 @@ fillMailboxes = do
           let mb = maybe (Zipper [] fallbackEntry []) id (fromList $ entrySort e)
           pure (T.unpack mbName, mb)
         entrySort = L.sortOn (D.Down . M.maybe epoch id . pubTime)
-        epoch = UTCTime (fromGregorian 1 1 1970) (secondsToDiffTime 0)
+        epoch = UTCTime (fromGregorian 1 1 1970) (secondsToDiffTime 1)
 
 
 -- setMailBox :: MailBoxes -> TuiState -> TuiState
@@ -237,7 +248,7 @@ drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
   where 
     isCurrent = mb == curMb
     a :: AttrName
-    a = if isCurrent then selectedTitleAttr else titleAttr 
+    a = if isCurrent then greenAttr else blueAttr 
 
 
 drawMailBox :: TuiState -> Widget ResourceName
@@ -251,21 +262,21 @@ drawMailBox ts = viewport ResourceName Vertical
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =  
-  toView $ border $ padRight Max $ vBox 
+  toView $ overrideAttr borderAttr blueAttr $ border $ padRight Max $ vBox 
       [
         hBox [
               drawField (title ent) a 
             , padLeft Max $ withAttr b $ drawTime (pubTime ent) 
             ]
       , padRight (Pad 30) $ padTop (Pad 1) $ padBottom (Pad 1) desc
-      , drawField (source ent) sourceAttr
+      , drawField (source ent) (if (not $ isRead ent) then sourceAttr else readAttr)
       ]
   where 
     current = currEnt == ent
     a :: AttrName
-    a = if current then selectedTitleAttr else titleAttr 
+    a = if current then greenAttr else blueAttr 
     b :: AttrName
-    b = if current then selectedTitleAttr else timeAttr
+    b = if current then greenAttr else timeAttr
     toView :: Widget n -> Widget n
     toView = if current then visible else id
     drawTime :: Maybe UTCTime -> Widget n
