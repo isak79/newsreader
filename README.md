@@ -1,1 +1,1 @@
-A simple newsreader, written in haskell
+A simple TUI newsreader, written in haskell
