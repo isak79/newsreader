@@ -58,6 +58,7 @@ refillMailboxes = do
   mb <- liftIO fillMailboxes 
   modify $ setMailBoxes mb
 
+pressU :: EventM ResourceName TuiState ()
 pressU = do
   bp <- gets buttonPressed 
   case bp of
@@ -66,6 +67,7 @@ pressU = do
       modify $ setButtonPressed None
     _ -> return ()
 
+pressR :: EventM ResourceName TuiState ()
 pressR = do
   bp <- gets buttonPressed 
   case bp of
