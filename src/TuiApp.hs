@@ -338,7 +338,7 @@ drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help"
                   prevItem' = if box then "prevEntry" else "prevMailbox"
                   buttons = case bp of
                     Button 'm' -> ["r","u"]
-                    _          -> ["q","j","k","<enter>"] <> ["m" | box]<> ["r","g","G","d","?","-"]
+                    _          -> ["q","j/<down>","k/<up>","<enter>"] <> ["m" | box]<> ["r","g","G","d","?","-"]
                   descriptions = case bp of
                     Button 'm' -> ["read", "unread"]
                     _          -> ["exitApp",nextItem',prevItem',goTo] <> ["markAs..."| box] <> ["refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]
