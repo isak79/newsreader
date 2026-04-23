@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes, refreshAll) where
+module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -129,3 +129,7 @@ fetchEntries mailboxName = withSQLite "newsreader.sqlite" $ do
     pure dbEntry
   pure $ map fromDbEntry result
 
+
+readEntry :: Entry -> IO ()
+readEntry ent = withSQLite "newsreader.sqlite" $ do
+  update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := true])

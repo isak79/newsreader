@@ -104,6 +104,7 @@ openSelectedUrl = do
   let updatedCurrMailbox = updateCurrentItem readCurrentry currMailbox 
   let updatedMailboxtuple = (fst currMailboxTuple, updatedCurrMailbox)
   let newMailboxes = updateCurrentItem updatedMailboxtuple mailBoxes
+  liftIO $ readEntry currEntry 
   modify $ setMailBoxes newMailboxes 
   liftIO $ openUrl $ T.unpack $ source currEntry
   pure ()
