@@ -334,10 +334,10 @@ drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help"
                   prevItem' = if box then "prevEntry" else "prevMailbox"
                   buttons = case bp of
                     Button 'm' -> ["r","u"]
-                    _          -> ["q","j","k","<enter>","m","r","g","G","d","?","-"]
+                    _          -> ["q","j","k","<enter>"] <> ["m" | box]<> ["r","g","G","d","?","-"]
                   descriptions = case bp of
                     Button 'm' -> ["read", "unread"]
-                    _          -> ["exitApp",nextItem',prevItem',goTo,"markAs..","refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]
+                    _          -> ["exitApp",nextItem',prevItem',goTo] <> ["markAs..."| box] <> ["refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ txt t
