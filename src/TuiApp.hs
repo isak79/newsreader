@@ -63,7 +63,8 @@ pressU = do
   case bp of
     Button 'm' -> do
       markEntry False
-    _ -> return ()        
+      modify $ setButtonPressed None
+    _ -> return ()
 
 pressR = do
   bp <- gets buttonPressed 
@@ -262,7 +263,7 @@ setMailBoxes mb ts = ts { mailBoxes = mb }
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
-  | showHelp ts = [drawHelp inBox , toDraw]
+  | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
   | otherwise   = [toDraw]
     where
       inBox = case currentDisplay ts of
@@ -320,17 +321,23 @@ drawEntry showDesc currEnt ent =
       Nothing -> False
       Just _  -> True
 
-drawHelp :: Bool -> Widget n
-drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
+drawHelp :: ButtonPressed Char -> Bool -> Widget n
+drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
               hBox 
-                [padRight Max $ 
-                    vBox [hCenter $ str x | x <- ["q","j","k","<enter>","r","g","G","d","?","-"]], 
-                    vBox [hCenter $ str x | x <- ["exitApp",nextItem',prevItem',goTo,"refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]]
+                [ padRight Max $ 
+                    vBox [hCenter $ str x | x <- buttons], 
+                    vBox [hCenter $ str x | x <- descriptions]
                 ]
                 where
                   goTo = if box then "goToUrl" else "goToMailbox"
                   nextItem' = if box then "nextEntry" else "nextMailbox"
                   prevItem' = if box then "prevEntry" else "prevMailbox"
+                  buttons = case bp of
+                    Button 'm' -> ["r","u"]
+                    _          -> ["q","j","k","<enter>","m","r","g","G","d","?","-"]
+                  descriptions = case bp of
+                    Button 'm' -> ["read", "unread"]
+                    _          -> ["exitApp",nextItem',prevItem',goTo,"markAs..","refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ txt t
