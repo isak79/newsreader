@@ -293,8 +293,8 @@ drawHelp :: Bool -> Widget n
 drawHelp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
               hBox 
                 [padRight Max $ 
-                    vBox [hCenter $ str x | x <- ["q","j","k","<enter>","g","G","d","?","-"]], 
-                    vBox [hCenter $ str x | x <- ["exitApp",nextItem',prevItem',goTo,"goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]]
+                    vBox [hCenter $ str x | x <- ["q","j","k","<enter>","r","g","G","d","?","-"]], 
+                    vBox [hCenter $ str x | x <- ["exitApp",nextItem',prevItem',goTo,"refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]]
                 ]
                 where
                   goTo = if box then "goToUrl" else "goToMailbox"
