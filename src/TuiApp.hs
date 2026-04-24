@@ -15,7 +15,8 @@ import qualified Data.Ord as D
 import Db
 import qualified Data.List as L
 
-blueAttr, greenAttr, sourceAttr, timeAttr, readAttr :: AttrName
+blueAttr, greenAttr, sourceAttr, timeAttr, readAttr, cyanAttr :: AttrName
+cyanAttr = attrName "cyanAttr"
 readAttr = attrName "readBorder"
 blueAttr = attrName "title"
 greenAttr = attrName "selectedTitle"
@@ -28,7 +29,8 @@ runApp = do
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
                                                               , (sourceAttr, fg V.yellow) 
-                                                              , (borderAttr, fg V.white) ]
+                                                              , (borderAttr, fg V.white) 
+                                                              , (cyanAttr, fg V.cyan) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
@@ -299,7 +301,7 @@ drawMailBox ts = viewport ResourceName Vertical
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =  
-  toView $ overrideAttr borderAttr (if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox 
+  toView $ overrideAttr borderAttr (if current && showDesc then cyanAttr else if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox 
       [
         hBox [
               drawField (title ent) a 
