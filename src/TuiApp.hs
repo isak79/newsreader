@@ -2,9 +2,10 @@ module TuiApp(runApp) where
 
 import ParseFeed (Entry(..), fallbackEntry)
 import Brick
+import Brick.Widgets.Border
+import Brick.Widgets.Edit
 import qualified Graphics.Vty as V
 import qualified Data.Text as T
-import Brick.Widgets.Border
 import System.Process (callProcess)
 import Control.Monad.IO.Class (liftIO)
 import System.Info
@@ -14,6 +15,8 @@ import Brick.Widgets.Center (hCenter, hCenterLayer)
 import qualified Data.Ord as D
 import Db
 import qualified Data.List as L
+import Lens.Micro
+
 
 blueAttr, greenAttr, sourceAttr, timeAttr, readAttr, cyanAttr :: AttrName
 cyanAttr = attrName "cyanAttr"
@@ -39,22 +42,38 @@ runApp = do
   pure ()
 
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem Next
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem Prev
-handleTuiEvent (VtyEvent (V.EvKey V.KDown []))       = switchItem Next
-handleTuiEvent (VtyEvent (V.EvKey V.KUp []))         = switchItem Prev
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'g') [])) = switchItem Top 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
-handleTuiEvent (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
-handleTuiEvent (VtyEvent (V.EvKey V.KEsc []))        = modify $ setButtonPressed None
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR 
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
-handleTuiEvent (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
-handleTuiEvent _                                     = pure ()
+handleTuiEvent ev = do
+  ts <- get
+  case buttonPressed ts of
+    Button 'e' -> handleEdit ev
+    _          -> handleNormal ev
+
+
+handleEdit :: BrickEvent ResourceName e -> EventM ResourceName TuiState () 
+handleEdit ev = case ev of
+  (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
+  _                              -> zoom editorStateL (handleEditorEvent ev)
+  where
+    editorStateL = lens editorState (\s e -> s { editorState = e })
+
+handleNormal :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
+handleNormal (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
+handleNormal (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem Next
+handleNormal (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem Prev
+handleNormal (VtyEvent (V.EvKey V.KDown []))       = switchItem Next
+handleNormal (VtyEvent (V.EvKey V.KUp []))         = switchItem Prev
+handleNormal (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
+handleNormal (VtyEvent (V.EvKey (V.KChar 'g') [])) = switchItem Top 
+handleNormal (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
+handleNormal (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
+handleNormal (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
+handleNormal (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
+handleNormal (VtyEvent (V.EvKey V.KEsc []))        = modify $ setButtonPressed None
+handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR 
+handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
+handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
+handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify $ setButtonPressed (Button 'e')
+handleNormal _                                     = pure ()
 
 refillMailboxes :: EventM ResourceName TuiState ()
 refillMailboxes = do
@@ -171,7 +190,8 @@ buildState = do
                 , showDesc       = False 
                 , showHelp       = False 
                 , mailBoxes      = mailboxes
-                , buttonPressed  = None }
+                , buttonPressed  = None 
+                , editorState    = editorText ResourceName Nothing $ T.pack "" }
 
 fillMailboxes :: IO MailBoxes
 fillMailboxes = do
@@ -260,22 +280,27 @@ data TuiState = TuiState { currentDisplay :: CurrentDisplay
                          , showDesc       :: Bool 
                          , showHelp       :: Bool 
                          , mailBoxes      :: MailBoxes
-                         , buttonPressed  :: ButtonPressed Char }
+                         , buttonPressed  :: ButtonPressed Char 
+                         , editorState    :: Editor T.Text ResourceName }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
+drawEditor ts = renderEditor (txt . T.unlines) True (editorState ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
   | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
-  | otherwise   = [toDraw]
+  | otherwise   = [border $ drawEditor ts | edit] <> [toDraw]
     where
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
         _               -> True
       toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
+      edit   = case buttonPressed ts of
+        Button 'e' -> True
+        _   -> False
 
 
 drawHome :: Eq b => Zipper (String, b) -> Widget n

@@ -34,6 +34,7 @@ executable newsreader
 										, feed
 										, time
 										, vty
+										, microlens
 										, microlens-mtl
 										, process
 										, http-conduit
