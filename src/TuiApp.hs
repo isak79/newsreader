@@ -33,7 +33,7 @@ runApp = do
                                                               , (greenAttr, fg V.green)
                                                               , (sourceAttr, fg V.yellow) 
                                                               , (borderAttr, fg V.white) 
-                                                              , (cyanAttr, fg V.cyan) ]
+                                                              , (cyanAttr, fg V.green) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
