@@ -18,8 +18,7 @@ import qualified Data.List as L
 import Lens.Micro
 
 
-blueAttr, greenAttr, sourceAttr, timeAttr, readAttr, cyanAttr :: AttrName
-cyanAttr = attrName "cyanAttr"
+blueAttr, greenAttr, sourceAttr, timeAttr, readAttr :: AttrName
 readAttr = attrName "readBorder"
 blueAttr = attrName "title"
 greenAttr = attrName "selectedTitle"
@@ -32,8 +31,7 @@ runApp = do
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
                                                               , (sourceAttr, fg V.yellow) 
-                                                              , (borderAttr, fg V.white) 
-                                                              , (cyanAttr, fg V.green) ]
+                                                              , (borderAttr, fg V.white) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
@@ -287,6 +285,7 @@ data TuiState = TuiState { currentDisplay :: CurrentDisplay
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
+drawEditor :: TuiState -> Widget ResourceName
 drawEditor ts = renderEditor (txt . T.unlines) True (editorState ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
@@ -326,7 +325,7 @@ drawMailBox ts = viewport ResourceName Vertical
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =  
-  toView $ overrideAttr borderAttr (if current && showDesc then cyanAttr else if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox 
+  toView $ overrideAttr borderAttr (if current && showDesc then greenAttr else if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox 
       [
         hBox [
               drawField (title ent) a 
