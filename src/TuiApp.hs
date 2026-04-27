@@ -25,6 +25,7 @@ greenAttr = attrName "selectedTitle"
 sourceAttr = attrName "source"
 timeAttr = attrName "time"
 
+-- | The main function that ties the whole program together
 runApp :: IO ()
 runApp = do
   tuiState <- buildState
@@ -39,6 +40,7 @@ runApp = do
   _ <- defaultMain app tuiState
   pure ()
 
+-- | The app event handler
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent ev = do
   ts <- get
@@ -47,6 +49,7 @@ handleTuiEvent ev = do
     _          -> handleNormal ev
 
 
+-- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
 handleEdit :: BrickEvent ResourceName e -> EventM ResourceName TuiState () 
 handleEdit ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
@@ -54,6 +57,7 @@ handleEdit ev = case ev of
   where
     editorStateL = lens editorState (\s e -> s { editorState = e })
 
+-- | Handles keypresses when not in editor mode
 handleNormal :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleNormal (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
 handleNormal (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem Next
@@ -73,12 +77,14 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (
 handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify $ setButtonPressed (Button 'e')
 handleNormal _                                     = pure ()
 
+-- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
 refillMailboxes :: EventM ResourceName TuiState ()
 refillMailboxes = do
   liftIO refreshAll 
   mb <- liftIO fillMailboxes 
   modify $ setMailBoxes mb
 
+-- | Helper function for what happens when user presses 'U', mainly for marking current entry as unread
 pressU :: EventM ResourceName TuiState ()
 pressU = do
   bp <- gets buttonPressed 
@@ -88,6 +94,8 @@ pressU = do
       modify $ setButtonPressed None
     _ -> return ()
 
+
+-- | Helper function for what happens when user presses 'R', used for marking current entry as read, and for refreshing mailboxes
 pressR :: EventM ResourceName TuiState ()
 pressR = do
   bp <- gets buttonPressed 
@@ -97,13 +105,14 @@ pressR = do
       modify $ setButtonPressed None
     _       -> refillMailboxes 
 
+-- | Update the buttonPressed TuiState element
 setButtonPressed :: ButtonPressed Char -> TuiState -> TuiState
 setButtonPressed c t = t { buttonPressed = c }
-
 
 data Dir = Next | Prev | Top | Bottom
   deriving Eq
 
+-- | Moves the current relevant zipper the specified direction
 switchItem :: Dir -> EventM ResourceName TuiState ()
 switchItem switchTo = do
   mb <- gets mailBoxes
@@ -126,9 +135,7 @@ switchItem switchTo = do
         Top    -> firstItem
         Bottom -> lastItem
 
-  
-
-
+-- | Either enter a mailbox, or if in one, open the entries link
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
   curDisplay    <- gets currentDisplay
@@ -136,9 +143,11 @@ activateItem = do
      ShowMailboxList  -> modify $ setCurrentDisplay ShowEntries
      _    -> openSelectedUrl 
 
+-- | Update the states display element
 setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
 setCurrentDisplay cd ts = ts { currentDisplay = cd } 
 
+-- | Open the current enties URL
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
   mailBoxes   <- gets mailBoxes
@@ -147,6 +156,7 @@ openSelectedUrl = do
   liftIO $ openUrl $ T.unpack $ source currEntry
   pure ()
 
+-- | Update the read element of an entry to be either True or False
 markEntry b = do
   mailBoxes   <- gets mailBoxes
   let currMailboxTuple = getCurrent mailBoxes 
@@ -158,6 +168,7 @@ markEntry b = do
   let newMailboxes = updateCurrentItem updatedMailboxtuple mailBoxes
   liftIO $ readEntry b currEntry 
   modify $ setMailBoxes newMailboxes 
+
 
 
 setRead :: Bool -> Entry -> Entry
@@ -181,6 +192,7 @@ toggleShowHelp = do
 setShowHelp :: Bool -> TuiState -> TuiState
 setShowHelp b t = t { showHelp = b}
 
+-- | Build the initial TUI state
 buildState :: IO TuiState
 buildState = do
   mailboxes <- fillMailboxes 
@@ -191,6 +203,7 @@ buildState = do
                 , buttonPressed  = None 
                 , editorState    = editorText AddMailboxEditor Nothing $ T.pack "" }
 
+-- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
 fillMailboxes = do
   mbs <- fetchMailboxes 
@@ -220,6 +233,7 @@ changeShowDesc = do
   modify $ setShowDesc $ not prev
 
 
+-- | The datastructure that handles the displayed entries/mailboxes, and the logic of scrolling through them
 data Zipper a = Zipper [a] a [a]
   deriving (Show, Functor, Eq)
 
@@ -258,9 +272,6 @@ toList (Zipper xs y zs) = reverse xs ++ y : zs
 
 getCurrent :: Zipper a -> a
 getCurrent (Zipper _ y _) = y
-
--- onTop :: Zipper a -> Bool
--- onTop (Zipper xs _ _) = null xs
 
 updateCurrentItem :: a -> Zipper a -> Zipper a
 updateCurrentItem z (Zipper xs _ zs) = Zipper xs z zs
