@@ -170,7 +170,7 @@ openUrl url = case os of
   "mingw32" -> callProcess "cmd" ["/c", "start", "", url] 
   _         -> putStrLn $ "open manually: " ++ url
 
-data ResourceName = ResourceName
+data ResourceName = GeneralViewport | AddMailboxEditor | AddFeedEditor | RenameEditor
   deriving (Show, Eq, Ord)
 
 toggleShowHelp :: EventM ResourceName TuiState ()
@@ -189,7 +189,7 @@ buildState = do
                 , showHelp       = False 
                 , mailBoxes      = mailboxes
                 , buttonPressed  = None 
-                , editorState    = editorText ResourceName Nothing $ T.pack "" }
+                , editorState    = editorText AddMailboxEditor Nothing $ T.pack "" }
 
 fillMailboxes :: IO MailBoxes
 fillMailboxes = do
@@ -315,7 +315,7 @@ drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
 
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport ResourceName Vertical 
+drawMailBox ts = viewport GeneralViewport Vertical 
   $ vBox $  toList $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
     -- makeVisib = if  onTop ents then visible else id 
