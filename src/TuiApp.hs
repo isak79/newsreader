@@ -201,7 +201,7 @@ buildState = do
                 , showHelp       = False 
                 , mailBoxes      = mailboxes
                 , buttonPressed  = None 
-                , editorState    = editorText AddMailboxEditor Nothing $ T.pack "" }
+                , editorState    = editorText RenameEditor (Just 1) $ T.pack "" }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
