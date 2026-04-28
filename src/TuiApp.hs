@@ -55,7 +55,7 @@ handleEdit ev = case ev of
   (VtyEvent (V.EvKey V.KEnter [])) -> do 
     ts <- get
     let url = T.strip . T.unlines . getEditContents $ editorState ts
-    modify $ (\u tstate -> tstate { newFeedUrl = Just u }) url
+    modify $ setNewFeedUrl (Just url)
     modify $ setButtonPressed None
     modify $ setCurrentDisplay ChooseMailbox
   _                              -> zoom editorStateL (handleEditorEvent ev)
@@ -145,6 +145,9 @@ switchItem switchTo = do
       mailBoxesL = lens mailBoxes (\s e -> s { mailBoxes = e })
 
 -- | Either enter a mailbox, or if in one, open the entries link
+setNewFeedUrl :: Maybe URL -> TuiState -> TuiState
+setNewFeedUrl url ts = ts { newFeedUrl = url }
+
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
   curDisplay    <- gets currentDisplay
@@ -156,6 +159,7 @@ activateItem = do
         url <- gets newFeedUrl 
         addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
         modify $ setCurrentDisplay ShowFeeds
+        modify $ setNewFeedUrl Nothing
      _    -> openSelectedUrl 
 
 -- | Update the states display element
