@@ -125,16 +125,18 @@ switchItem switchTo = do
                 let newMailBox   = func curMailBox 
                 let newMailBoxes = updateCurrentItem (curMailBoxName,newMailBox) mb 
                 modify $ setMailBoxes newMailBoxes 
-    ShowMailboxList
-              -> do
-                let newMb = func mb
-                modify $ setMailBoxes newMb
+    ShowMailboxList -> zoom mailBoxesL $ modify func
+    ShowFeeds -> zoom feedsL $ modify func 
     where
       func = case switchTo of
         Next   -> nextItem 
         Prev   -> prevItem 
         Top    -> firstItem
         Bottom -> lastItem
+      feedsL :: Lens' TuiState (Zipper (URL, T.Text))
+      feedsL = lens feedList (\s e -> s { feedList = e })
+      mailBoxesL :: Lens' TuiState MailBoxes
+      mailBoxesL = lens mailBoxes (\s e -> s { mailBoxes = e })
 
 -- | Either enter a mailbox, or if in one, open the entries link
 activateItem :: EventM ResourceName TuiState ()
