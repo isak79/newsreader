@@ -205,7 +205,7 @@ buildState = do
                 , showHelp       = False 
                 , mailBoxes      = mailboxes
                 , buttonPressed  = None 
-                , editorState    = editorText RenameEditor (Just 1) $ T.pack "" 
+                , editorState    = editorText AddFeedEditor (Just 2) $ T.pack "" 
                 , feedList       = M.fromJust $ fromList feeds }
 
 -- | Fetch every feed, update database and memory
@@ -308,7 +308,7 @@ drawEditor ts = renderEditor (txt . T.unlines) True (editorState ts)
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
   | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
-  | otherwise   = [border $ drawEditor ts | edit] <> [toDraw]
+  | otherwise   = vBox ([border $ drawEditor ts | edit] <> [toDraw]) : []
     where
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
@@ -322,12 +322,14 @@ drawTui ts
         Button 'e' -> True
         _   -> False
 
+drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport GeneralViewport Vertical 
-  $ vBox $ toList $ fmap (drawFeedEntry (showDesc ts) $ getCurrent fl) fl
+  $ vBox $ toList $ fmap (drawFeedEntry $ getCurrent fl) fl
     where
       fl = feedList ts
 
-drawFeedEntry showDesc curFd fd = border $ padRight Max $ withAttr a $ txt $ fst fd
+drawFeedEntry :: (URL, T.Text) -> (URL, T.Text) -> Widget n
+drawFeedEntry curFd fd = border $ padRight Max $  vBox [ withAttr a $ txt $ fst fd, withAttr sourceAttr $ txt (snd fd)]
   where 
     isCurrent = fd == curFd
     a :: AttrName
