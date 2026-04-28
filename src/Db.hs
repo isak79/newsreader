@@ -7,13 +7,13 @@ import Database.Selda.SQLite
 import ParseFeed (parseFeed, Entry(..), parseFeed)
 type URL         = Text
 
-data DbEntry = DbEntry 
+data DbEntry = DbEntry
   {
-    eID           :: ID DbEntry   
+    eID           :: ID DbEntry
   , dbTitle       :: Text
   , dbSource      :: Text
   , dbPubTime     :: Maybe UTCTime
-  , dbDescription :: Maybe Text 
+  , dbDescription :: Maybe Text
   , dedup         :: Text
   , dbIsRead      :: Bool
   , feedID        :: ID DbFeeds
@@ -37,7 +37,7 @@ toDbEntry feedid ent = DbEntry {
   , dbIsRead      = isRead ent
   , feedID        = feedid
   }
-  where 
+  where
     title'  = title ent
     source' = source ent
     dedupString = title' <> "\x1f" <> source'
@@ -53,13 +53,13 @@ fromDbEntry dbEnt = Entry {
 
 
 data DbMailbox = DbMailbox {
-    mID           :: ID DbMailbox 
+    mID           :: ID DbMailbox
   , name          :: Text
   } deriving (Eq, Show, Generic)
 
 instance SqlRow DbMailbox
 
-dbMailboxes :: Table DbMailbox 
+dbMailboxes :: Table DbMailbox
 dbMailboxes = table "mailboxes" [#mID :- autoPrimary]
 
 
@@ -75,6 +75,12 @@ dbFeeds :: Table DbFeeds
 dbFeeds = table "feeds" [ #fID :- autoPrimary
                         , #url :- unique ]
 
+getFeeds :: (MonadMask m, MonadIO m) => m [DbFeeds]
+getFeeds = withSQLite "newsreader.sqlite" $ do
+  query $ do
+    select dbFeeds
+
+
 addFeedToMailbox :: (MonadIO m, MonadMask m) => URL -> Text -> m ()
 addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
   mid <- mailboxIDfromName mailboxName
@@ -86,45 +92,45 @@ addFeedToMailbox url mailboxName = withSQLite "newsreader.sqlite" $ do
 
 refreshAll :: IO ()
 refreshAll = withSQLite "newsreader.sqlite" $ do
-  urlFids <- queryUrlsAndFeedIDs 
-  dbEntries0 <- concat <$> traverse (\(url, fid) -> liftIO $ map (toDbEntry fid) <$> parseFeed url) urlFids 
-  let dbEntries1 = map (:[]) dbEntries0 
+  urlFids <- queryUrlsAndFeedIDs
+  dbEntries0 <- concat <$> traverse (\(url, fid) -> liftIO $ map (toDbEntry fid) <$> parseFeed url) urlFids
+  let dbEntries1 = map (:[]) dbEntries0
   _ <- traverse (tryInsert dbEntries) dbEntries1
   pure ()
-    where  
+    where
       queryUrlsAndFeedIDs :: MonadSelda m => m [(URL, ID DbFeeds)]
       queryUrlsAndFeedIDs = do
         fs <- query $ select dbFeeds
         pure [ (url f, fID f) | f <- fs ]
-      
+
 
 mailboxIDfromName :: MonadSelda m => Text -> m [ID DbMailbox]
 mailboxIDfromName mailboxName = query $ do
     mailbox <- select dbMailboxes
     restrict (mailbox ! #name .== literal mailboxName)
     pure (mailbox ! #mID)
-    
+
 
 initializeTables :: IO ()
 initializeTables = withSQLite "newsreader.sqlite" $ do
   tryCreateTable dbEntries
   tryCreateTable dbMailboxes
-  tryCreateTable dbFeeds 
+  tryCreateTable dbFeeds
 
 fetchMailboxes :: (MonadMask m, MonadIO m) => m [Text]
 fetchMailboxes = withSQLite "newsreader.sqlite" $ do
-  mb <- query $ select dbMailboxes 
+  mb <- query $ select dbMailboxes
   pure (map name mb)
 
 
 fetchEntries :: (MonadMask m, MonadIO m) => Text -> m [Entry]
 fetchEntries mailboxName = withSQLite "newsreader.sqlite" $ do
   result <- query $ do
-    mailbox <- select dbMailboxes 
+    mailbox <- select dbMailboxes
     restrict (mailbox ! #name .== literal mailboxName)
-    dbFeed <- select dbFeeds  
+    dbFeed <- select dbFeeds
     restrict (dbFeed ! #mailboxID .== mailbox ! #mID)
-    dbEntry <- select dbEntries 
+    dbEntry <- select dbEntries
     restrict (dbEntry ! #feedID .== dbFeed ! #fID)
     pure dbEntry
   pure $ map fromDbEntry result
@@ -132,6 +138,6 @@ fetchEntries mailboxName = withSQLite "newsreader.sqlite" $ do
 
 readEntry :: Bool -> Entry -> IO ()
 readEntry b ent = withSQLite "newsreader.sqlite" $ do
-  case b of 
+  case b of
     True  -> update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := true])
     False -> update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := false])
