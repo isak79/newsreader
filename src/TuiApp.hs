@@ -48,11 +48,16 @@ handleTuiEvent ev = do
     Button 'e' -> handleEdit ev
     _          -> handleNormal ev
 
-
 -- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
 handleEdit :: BrickEvent ResourceName e -> EventM ResourceName TuiState () 
 handleEdit ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
+  (VtyEvent (V.EvKey V.KEnter [])) -> do 
+    ts <- get
+    let url = T.strip . T.unlines . getEditContents $ editorState ts
+    modify $ (\u tstate -> tstate { newFeedUrl = Just u }) url
+    modify $ setButtonPressed None
+    modify $ setCurrentDisplay ChooseMailbox
   _                              -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens editorState (\s e -> s { editorState = e })
@@ -126,7 +131,8 @@ switchItem switchTo = do
                 let newMailBoxes = updateCurrentItem (curMailBoxName,newMailBox) mb 
                 modify $ setMailBoxes newMailBoxes 
     ShowMailboxList -> zoom mailBoxesL $ modify func
-    ShowFeeds -> zoom feedsL $ modify func 
+    ChooseMailbox   -> zoom mailBoxesL $ modify func
+    ShowFeeds       -> zoom feedsL $ modify func 
     where
       func = case switchTo of
         Next   -> nextItem 
@@ -144,6 +150,12 @@ activateItem = do
   curDisplay    <- gets currentDisplay
   case curDisplay of
      ShowMailboxList  -> modify $ setCurrentDisplay ShowEntries
+     ChooseMailbox    -> do
+        mb <- gets mailBoxes 
+        let currMb = getCurrent mb
+        url <- gets newFeedUrl 
+        addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
+        modify $ setCurrentDisplay ShowFeeds
      _    -> openSelectedUrl 
 
 -- | Update the states display element
@@ -205,8 +217,9 @@ buildState = do
                 , showHelp       = False 
                 , mailBoxes      = mailboxes
                 , buttonPressed  = None 
-                , editorState    = editorText AddFeedEditor (Just 2) $ T.pack "" 
-                , feedList       = M.fromJust $ fromList feeds }
+                , editorState    = editorText AddFeedEditor (Just 1) $ T.pack "" 
+                , feedList       = M.fromJust $ fromList feeds 
+                , newFeedUrl     = Nothing }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
@@ -286,7 +299,7 @@ type MailboxName = String
 type Mailbox     = Zipper Entry
 type MailBoxes   = Zipper (MailboxName, Mailbox)
 
-data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds
+data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox
 
 data ButtonPressed x = Button x | None
 
@@ -296,19 +309,20 @@ data TuiState = TuiState { currentDisplay :: CurrentDisplay
                          , mailBoxes      :: MailBoxes
                          , buttonPressed  :: ButtonPressed Char 
                          , editorState    :: Editor T.Text ResourceName
+                         , newFeedUrl     :: Maybe URL
                          , feedList       :: Zipper (URL, T.Text) }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
-drawEditor :: TuiState -> Widget ResourceName
-drawEditor ts = renderEditor (txt . T.unlines) True (editorState ts)
+drawAddFeedEditor :: TuiState -> Widget ResourceName
+drawAddFeedEditor ts = renderEditor (txt . T.unlines) True (editorState ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts 
   | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
-  | otherwise   = vBox ([border $ drawEditor ts | edit] <> [toDraw]) : []
+  | otherwise   = vBox ([border $ drawAddFeedEditor ts | edit] <> [toDraw]) : []
     where
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
@@ -318,6 +332,7 @@ drawTui ts
         ShowEntries     -> drawMailBox ts
         ShowMailboxList -> drawHome $ mailBoxes ts
         ShowFeeds       -> drawFeedList ts
+        ChooseMailbox   -> drawHome $ mailBoxes ts
       edit   = case buttonPressed ts of
         Button 'e' -> True
         _   -> False
