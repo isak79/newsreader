@@ -75,6 +75,7 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR
 handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
 handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify $ setButtonPressed (Button 'e')
+handleNormal (VtyEvent (V.EvKey (V.KChar 'f') [])) = modify $ setCurrentDisplay ShowFeeds
 handleNormal _                                     = pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
@@ -196,12 +197,14 @@ setShowHelp b t = t { showHelp = b}
 buildState :: IO TuiState
 buildState = do
   mailboxes <- fillMailboxes 
+  feeds    <- getFeeds 
   pure TuiState { currentDisplay = ShowMailboxList
                 , showDesc       = False 
                 , showHelp       = False 
                 , mailBoxes      = mailboxes
                 , buttonPressed  = None 
-                , editorState    = editorText RenameEditor (Just 1) $ T.pack "" }
+                , editorState    = editorText RenameEditor (Just 1) $ T.pack "" 
+                , feedList       = M.fromJust $ fromList feeds }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
@@ -281,7 +284,7 @@ type MailboxName = String
 type Mailbox     = Zipper Entry
 type MailBoxes   = Zipper (MailboxName, Mailbox)
 
-data CurrentDisplay = ShowMailboxList | ShowEntries
+data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds
 
 data ButtonPressed x = Button x | None
 
@@ -290,7 +293,8 @@ data TuiState = TuiState { currentDisplay :: CurrentDisplay
                          , showHelp       :: Bool 
                          , mailBoxes      :: MailBoxes
                          , buttonPressed  :: ButtonPressed Char 
-                         , editorState    :: Editor T.Text ResourceName }
+                         , editorState    :: Editor T.Text ResourceName
+                         , feedList       :: Zipper (URL, T.Text) }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
@@ -307,15 +311,30 @@ drawTui ts
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
         _               -> True
-      toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
+      -- toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
+      toDraw = case currentDisplay ts of
+        ShowEntries     -> drawMailBox ts
+        ShowMailboxList -> drawHome $ mailBoxes ts
+        ShowFeeds       -> drawFeedList ts
       edit   = case buttonPressed ts of
         Button 'e' -> True
         _   -> False
 
+drawFeedList ts = viewport GeneralViewport Vertical 
+  $ vBox $ toList $ fmap (drawFeedEntry (showDesc ts) $ getCurrent fl) fl
+    where
+      fl = feedList ts
 
-drawHome :: Eq b => Zipper (String, b) -> Widget n
-drawHome mailboxes = vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
+drawFeedEntry showDesc curFd fd = border $ padRight Max $ withAttr a $ txt $ fst fd
+  where 
+    isCurrent = fd == curFd
+    a :: AttrName
+    a = if isCurrent then greenAttr else blueAttr 
 
+
+drawHome :: Eq b => Zipper (String, b) -> Widget ResourceName
+drawHome mailboxes = viewport GeneralViewport Vertical 
+  $ vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
 
 drawMailBoxEntry :: Eq b => (String, b) -> (String, b) -> Widget n
 drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
@@ -324,15 +343,12 @@ drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr 
 
-
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport GeneralViewport Vertical 
-  $ vBox $  toList $ fmap (drawEntry (showDesc ts) currEnt) ents
+  $ vBox $ toList $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
-    -- makeVisib = if  onTop ents then visible else id 
     ents      = snd $ getCurrent $ mailBoxes ts
     currEnt   = getCurrent ents
-
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =  
