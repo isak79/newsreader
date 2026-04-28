@@ -16,6 +16,7 @@ import qualified Data.Ord as D
 import Db
 import qualified Data.List as L
 import Lens.Micro
+import Data.Maybe (fromJust)
 
 
 blueAttr, greenAttr, sourceAttr, timeAttr, readAttr :: AttrName
@@ -160,6 +161,8 @@ activateItem = do
         addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
         modify $ setCurrentDisplay ShowFeeds
         modify $ setNewFeedUrl Nothing
+        feed <- getFeeds
+        modify $ setFeedList $ M.fromJust $ fromList feed
      _    -> openSelectedUrl 
 
 -- | Update the states display element
@@ -210,6 +213,9 @@ toggleShowHelp = do
 
 setShowHelp :: Bool -> TuiState -> TuiState
 setShowHelp b t = t { showHelp = b}
+
+setFeedList :: Zipper (URL, T.Text) -> TuiState -> TuiState
+setFeedList f ts = ts { feedList = f }
 
 -- | Build the initial TUI state
 buildState :: IO TuiState
