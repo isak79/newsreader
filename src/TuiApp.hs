@@ -50,8 +50,6 @@ handleTuiEvent ev = do
     (ShowFeeds, Button 'n')       -> addFeed ev
     (ShowMailboxList, Button 'n') -> addMailbox ev
     (ShowFeeds, Button 'e')       -> do
-      let url = fst $ getCurrent $ feedList ts
-      modify $ (\ed tstate -> tstate { addFeedEditor = ed }) (editorText AddFeedEditor (Just 1) url)
       renameFeed ev
     _                             -> handleNormal ev
 
@@ -60,9 +58,14 @@ renameFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
-    let url = T.strip . T.unlines . getEditContents $ addFeedEditor ts
+    let url         = T.strip . T.unlines . getEditContents $ addFeedEditor ts
+        fl          = feedList ts
+        newFeedList = updateCurrentItem (url, snd $ getCurrent fl) fl
     modify $ setNewFeedUrl (Just url)
-  _                              -> zoom editorStateL (handleEditorEvent ev)
+    modify $ setButtonPressed None
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
+    modify $ setFeedList newFeedList 
+  _      -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addFeedEditor (\s e -> s { addFeedEditor = e })
 
@@ -113,8 +116,15 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR
 handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
 handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'n') [])) = modify $ setButtonPressed (Button 'n')
-handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify $ setButtonPressed (Button 'e')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'f') [])) = modify $ setCurrentDisplay ShowFeeds
+handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
+  ts <- get
+  case currentDisplay ts of
+    ShowFeeds -> do
+      let url = fst $ getCurrent $ feedList ts
+      modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) url })
+      modify $ setButtonPressed $ Button 'e'
+    _         -> pure ()
 handleNormal _                                     = pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
