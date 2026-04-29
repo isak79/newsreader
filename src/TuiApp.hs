@@ -52,7 +52,17 @@ handleTuiEvent ev = do
     _          -> handleNormal ev
 
 addMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
-addMailbox ev = undefined 
+addMailbox ev = case ev of
+  (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
+  (VtyEvent (V.EvKey V.KEnter [])) -> do
+    ts <- get
+    let name = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
+    mb <- gets mailBoxes 
+    modify $ setMailBoxes (add (T.unpack name,Zipper [] fallbackEntry []) mb)
+    modify $ setButtonPressed None
+  _                              -> zoom editorStateL (handleEditorEvent ev)
+  where
+    editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
 
 -- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
 addFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
@@ -233,14 +243,15 @@ buildState :: IO TuiState
 buildState = do
   mailboxes <- fillMailboxes
   feeds     <- safeFeeds 
-  pure TuiState { currentDisplay = ShowMailboxList
-                , showDesc       = False
-                , showHelp       = False
-                , mailBoxes      = mailboxes
-                , buttonPressed  = None
+  pure TuiState { currentDisplay   = ShowMailboxList
+                , showDesc         = False
+                , showHelp         = False
+                , mailBoxes        = mailboxes
+                , buttonPressed    = None
                 , addFeedEditor    = editorText AddFeedEditor (Just 1) $ T.pack ""
-                , feedList       = M.fromJust $ fromList feeds
-                , newFeedUrl     = Nothing }
+                , addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack ""
+                , feedList         = M.fromJust $ fromList feeds
+                , newFeedUrl       = Nothing }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
@@ -317,6 +328,9 @@ getCurrent (Zipper _ y _) = y
 updateCurrentItem :: a -> Zipper a -> Zipper a
 updateCurrentItem z (Zipper xs _ zs) = Zipper xs z zs
 
+add :: a -> Zipper a -> Zipper a 
+add a (Zipper as b cs) = Zipper as b (cs <> [a])
+
 
 type MailboxName = String
 type Mailbox     = Zipper Entry
@@ -326,14 +340,15 @@ data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox
 
 data ButtonPressed x = Button x | None
 
-data TuiState = TuiState { currentDisplay :: CurrentDisplay
-                         , showDesc       :: Bool
-                         , showHelp       :: Bool
-                         , mailBoxes      :: MailBoxes
-                         , buttonPressed  :: ButtonPressed Char
+data TuiState = TuiState { currentDisplay   :: CurrentDisplay
+                         , showDesc         :: Bool
+                         , showHelp         :: Bool
+                         , mailBoxes        :: MailBoxes
+                         , buttonPressed    :: ButtonPressed Char
                          , addFeedEditor    :: Editor T.Text ResourceName
-                         , newFeedUrl     :: Maybe URL
-                         , feedList       :: Zipper (URL, T.Text) }
+                         , addMailboxEditor :: Editor T.Text ResourceName
+                         , newFeedUrl       :: Maybe URL
+                         , feedList         :: Zipper (URL, T.Text) }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
