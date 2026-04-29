@@ -49,10 +49,23 @@ handleTuiEvent ev = do
   case (currentDisplay ts,buttonPressed ts) of
     (ShowFeeds, Button 'n')       -> addFeed ev
     (ShowMailboxList, Button 'n') -> addMailbox ev
-    (ShowFeeds, Button 'e')       -> renameFeed ev
+    (ShowFeeds, Button 'e')       -> do
+      let url = fst $ getCurrent $ feedList ts
+      modify $ (\ed tstate -> tstate { addFeedEditor = ed }) (editorText AddFeedEditor (Just 1) url)
+      renameFeed ev
     _                             -> handleNormal ev
 
-renameFeed ev = undefined
+
+renameFeed ev = case ev of
+  (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
+  (VtyEvent (V.EvKey V.KEnter [])) -> do
+    ts <- get
+    let url = T.strip . T.unlines . getEditContents $ addFeedEditor ts
+    modify $ setNewFeedUrl (Just url)
+  _                              -> zoom editorStateL (handleEditorEvent ev)
+  where
+    editorStateL = lens addFeedEditor (\s e -> s { addFeedEditor = e })
+
 
 addMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addMailbox ev = case ev of
@@ -378,16 +391,17 @@ drawTui ts
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
-  $ vBox $ toList ( fmap (drawFeedEntry $ getCurrent fl) fl) <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
+  $ vBox $ toList (fmap (drawFeedEntry ts $ getCurrent fl) fl) <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
     where
       fl = feedList ts
 
-drawFeedEntry :: (URL, T.Text) -> (URL, T.Text) -> Widget n
-drawFeedEntry curFd fd = border $ padRight Max $  vBox [ withAttr a $ txt $ fst fd, withAttr sourceAttr $ txt (snd fd)]
+drawFeedEntry :: TuiState -> (URL, T.Text) -> (URL, T.Text) -> Widget ResourceName
+drawFeedEntry ts curFd fd = border $ padRight Max $  vBox [withAttr a url, withAttr sourceAttr $ txt (snd fd)]
   where
     isCurrent = fd == curFd
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
+    url = if isCurrent && (buttonPressed ts == Button 'e') then drawEditor ts addFeedEditor else txt $ fst fd
 
 
 drawHome :: TuiState -> Widget ResourceName
