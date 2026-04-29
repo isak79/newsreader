@@ -49,7 +49,10 @@ handleTuiEvent ev = do
   case (currentDisplay ts,buttonPressed ts) of
     (ShowFeeds, Button 'n')       -> addFeed ev
     (ShowMailboxList, Button 'n') -> addMailbox ev
-    _          -> handleNormal ev
+    (ShowFeeds, Button 'e')       -> renameFeed ev
+    _                             -> handleNormal ev
+
+renameFeed ev = undefined
 
 addMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addMailbox ev = case ev of
@@ -97,6 +100,7 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR
 handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
 handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'n') [])) = modify $ setButtonPressed (Button 'n')
+handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify $ setButtonPressed (Button 'e')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'f') [])) = modify $ setCurrentDisplay ShowFeeds
 handleNormal _                                     = pure ()
 
@@ -234,6 +238,7 @@ setShowHelp b t = t { showHelp = b}
 setFeedList :: Zipper (URL, T.Text) -> TuiState -> TuiState
 setFeedList f ts = ts { feedList = f }
 
+safeFeeds :: IO [(T.Text, T.Text)]
 safeFeeds = do
   feeds <- getFeeds
   let safe = if null feeds then [(T.pack "No url", T.pack "No feed")] else feeds
@@ -365,10 +370,6 @@ drawTui ts
   | showHelp ts = [drawHelp ts, toDraw]
   | otherwise   = [toDraw]
     where
-      inBox = case currentDisplay ts of
-        ShowMailboxList -> False
-        _               -> True
-      -- toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
       toDraw = case currentDisplay ts of
         ShowEntries     -> drawMailBox ts
         ShowMailboxList -> drawHome ts
