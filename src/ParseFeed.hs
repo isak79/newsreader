@@ -38,7 +38,7 @@ cleanUrl t = case T.words t of
 
 fallbackEntry :: Entry
 fallbackEntry = Entry { title = T.pack "Nothing to show"
-                      , source = T.pack "Nothing to show"
+                      , source = T.pack "https://www.linkedin.com/in/isak-hansen-a574bb2bb"
                       , pubTime = Nothing
                       , description = Nothing
                       , isRead = False }

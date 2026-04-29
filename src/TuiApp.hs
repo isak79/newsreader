@@ -29,10 +29,11 @@ timeAttr = attrName "time"
 -- | The main function that ties the whole program together
 runApp :: IO ()
 runApp = do
+  initializeTables 
   tuiState <- buildState
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
-                                                              , (sourceAttr, fg V.yellow) 
+                                                              , (sourceAttr, fg V.yellow)
                                                               , (borderAttr, fg V.white) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
@@ -45,15 +46,15 @@ runApp = do
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent ev = do
   ts <- get
-  case buttonPressed ts of
-    Button 'e' -> handleEdit ev
+  case (currentDisplay ts,buttonPressed ts) of
+    (ShowFeeds, Button 'n') -> handleEdit ev
     _          -> handleNormal ev
 
 -- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
-handleEdit :: BrickEvent ResourceName e -> EventM ResourceName TuiState () 
+handleEdit :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleEdit ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
-  (VtyEvent (V.EvKey V.KEnter [])) -> do 
+  (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let url = T.strip . T.unlines . getEditContents $ editorState ts
     modify $ setNewFeedUrl (Just url)
@@ -71,30 +72,30 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem Prev
 handleNormal (VtyEvent (V.EvKey V.KDown []))       = switchItem Next
 handleNormal (VtyEvent (V.EvKey V.KUp []))         = switchItem Prev
 handleNormal (VtyEvent (V.EvKey (V.KChar 'd') [])) = changeShowDesc
-handleNormal (VtyEvent (V.EvKey (V.KChar 'g') [])) = switchItem Top 
+handleNormal (VtyEvent (V.EvKey (V.KChar 'g') [])) = switchItem Top
 handleNormal (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
-handleNormal (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp 
+handleNormal (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp
 handleNormal (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
-handleNormal (VtyEvent (V.EvKey V.KEnter []))      = activateItem 
+handleNormal (VtyEvent (V.EvKey V.KEnter []))      = activateItem
 handleNormal (VtyEvent (V.EvKey V.KEsc []))        = modify $ setButtonPressed None
-handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR 
+handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR
 handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
 handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
-handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = modify $ setButtonPressed (Button 'e')
+handleNormal (VtyEvent (V.EvKey (V.KChar 'n') [])) = modify $ setButtonPressed (Button 'n')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'f') [])) = modify $ setCurrentDisplay ShowFeeds
 handleNormal _                                     = pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
 refillMailboxes :: EventM ResourceName TuiState ()
 refillMailboxes = do
-  liftIO refreshAll 
-  mb <- liftIO fillMailboxes 
+  liftIO refreshAll
+  mb <- liftIO fillMailboxes
   modify $ setMailBoxes mb
 
 -- | Helper function for what happens when user presses 'U', mainly for marking current entry as unread
 pressU :: EventM ResourceName TuiState ()
 pressU = do
-  bp <- gets buttonPressed 
+  bp <- gets buttonPressed
   case bp of
     Button 'm' -> do
       markEntry False
@@ -105,12 +106,12 @@ pressU = do
 -- | Helper function for what happens when user presses 'R', used for marking current entry as read, and for refreshing mailboxes
 pressR :: EventM ResourceName TuiState ()
 pressR = do
-  bp <- gets buttonPressed 
+  bp <- gets buttonPressed
   case bp of
     Button 'm' -> do
       markEntry True
       modify $ setButtonPressed None
-    _       -> refillMailboxes 
+    _       -> refillMailboxes
 
 -- | Update the buttonPressed TuiState element
 setButtonPressed :: ButtonPressed Char -> TuiState -> TuiState
@@ -123,21 +124,21 @@ data Dir = Next | Prev | Top | Bottom
 switchItem :: Dir -> EventM ResourceName TuiState ()
 switchItem switchTo = do
   mb <- gets mailBoxes
-  cd <- gets currentDisplay 
+  cd <- gets currentDisplay
   case cd of
-    ShowEntries 
-              -> do   
+    ShowEntries
+              -> do
                 let (curMailBoxName, curMailBox)   = getCurrent mb
-                let newMailBox   = func curMailBox 
-                let newMailBoxes = updateCurrentItem (curMailBoxName,newMailBox) mb 
-                modify $ setMailBoxes newMailBoxes 
+                let newMailBox   = func curMailBox
+                let newMailBoxes = updateCurrentItem (curMailBoxName,newMailBox) mb
+                modify $ setMailBoxes newMailBoxes
     ShowMailboxList -> zoom mailBoxesL $ modify func
     ChooseMailbox   -> zoom mailBoxesL $ modify func
-    ShowFeeds       -> zoom feedsL $ modify func 
+    ShowFeeds       -> zoom feedsL $ modify func
     where
       func = case switchTo of
-        Next   -> nextItem 
-        Prev   -> prevItem 
+        Next   -> nextItem
+        Prev   -> prevItem
         Top    -> firstItem
         Bottom -> lastItem
       feedsL :: Lens' TuiState (Zipper (URL, T.Text))
@@ -155,25 +156,26 @@ activateItem = do
   case curDisplay of
      ShowMailboxList  -> modify $ setCurrentDisplay ShowEntries
      ChooseMailbox    -> do
-        mb <- gets mailBoxes 
+        mb <- gets mailBoxes
         let currMb = getCurrent mb
-        url <- gets newFeedUrl 
+        url <- gets newFeedUrl
         addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
         modify $ setCurrentDisplay ShowFeeds
         modify $ setNewFeedUrl Nothing
-        feed <- getFeeds
+        feed <- liftIO safeFeeds 
         modify $ setFeedList $ M.fromJust $ fromList feed
-     _    -> openSelectedUrl 
+     ShowFeeds -> pure ()
+     _    -> openSelectedUrl
 
 -- | Update the states display element
 setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
-setCurrentDisplay cd ts = ts { currentDisplay = cd } 
+setCurrentDisplay cd ts = ts { currentDisplay = cd }
 
 -- | Open the current enties URL
 openSelectedUrl :: EventM ResourceName TuiState ()
 openSelectedUrl = do
   mailBoxes   <- gets mailBoxes
-  let currEntry = getCurrent $ snd $ getCurrent mailBoxes 
+  let currEntry = getCurrent $ snd $ getCurrent mailBoxes
   markEntry True
   liftIO $ openUrl $ T.unpack $ source currEntry
   pure ()
@@ -181,15 +183,15 @@ openSelectedUrl = do
 -- | Update the read element of an entry to be either True or False
 markEntry b = do
   mailBoxes   <- gets mailBoxes
-  let currMailboxTuple = getCurrent mailBoxes 
-  let currMailbox = snd $ currMailboxTuple 
-  let currEntry = getCurrent currMailbox 
-  let readCurrentry = setRead b currEntry 
-  let updatedCurrMailbox = updateCurrentItem readCurrentry currMailbox 
+  let currMailboxTuple = getCurrent mailBoxes
+  let currMailbox = snd $ currMailboxTuple
+  let currEntry = getCurrent currMailbox
+  let readCurrentry = setRead b currEntry
+  let updatedCurrMailbox = updateCurrentItem readCurrentry currMailbox
   let updatedMailboxtuple = (fst currMailboxTuple, updatedCurrMailbox)
   let newMailboxes = updateCurrentItem updatedMailboxtuple mailBoxes
-  liftIO $ readEntry b currEntry 
-  modify $ setMailBoxes newMailboxes 
+  liftIO $ readEntry b currEntry
+  modify $ setMailBoxes newMailboxes
 
 
 
@@ -200,10 +202,10 @@ openUrl :: String -> IO ()
 openUrl url = case os of
   "darwin"  -> callProcess "open" [url]
   "linux"   -> callProcess "xdg-open" [url]
-  "mingw32" -> callProcess "cmd" ["/c", "start", "", url] 
+  "mingw32" -> callProcess "cmd" ["/c", "start", "", url]
   _         -> putStrLn $ "open manually: " ++ url
 
-data ResourceName = GeneralViewport | AddMailboxEditor | AddFeedEditor | RenameEditor
+data ResourceName = EntriesViewport | FeedsViewport | MailboxesViewport | AddMailboxEditor | AddFeedEditor | RenameEditor
   deriving (Show, Eq, Ord)
 
 toggleShowHelp :: EventM ResourceName TuiState ()
@@ -217,25 +219,32 @@ setShowHelp b t = t { showHelp = b}
 setFeedList :: Zipper (URL, T.Text) -> TuiState -> TuiState
 setFeedList f ts = ts { feedList = f }
 
+safeFeeds = do
+  feeds <- getFeeds
+  let safe = if null feeds then [(T.pack "No url", T.pack "No feed")] else feeds
+  pure safe
+
 -- | Build the initial TUI state
 buildState :: IO TuiState
 buildState = do
-  mailboxes <- fillMailboxes 
-  feeds    <- getFeeds 
+  mailboxes <- fillMailboxes
+  feeds     <- safeFeeds 
   pure TuiState { currentDisplay = ShowMailboxList
-                , showDesc       = False 
-                , showHelp       = False 
+                , showDesc       = False
+                , showHelp       = False
                 , mailBoxes      = mailboxes
-                , buttonPressed  = None 
-                , editorState    = editorText AddFeedEditor (Just 1) $ T.pack "" 
-                , feedList       = M.fromJust $ fromList feeds 
+                , buttonPressed  = None
+                , editorState    = editorText AddFeedEditor (Just 1) $ T.pack ""
+                , feedList       = M.fromJust $ fromList feeds
                 , newFeedUrl     = Nothing }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
 fillMailboxes = do
-  mbs <- fetchMailboxes 
-  mailboxes0 <- traverse mkMailbox mbs
+  mbs <- fetchMailboxes
+  mailboxes0 <- if null mbs 
+      then pure [("Empty mailbox", Zipper [] fallbackEntry [])]
+      else traverse mkMailbox mbs
   let mailboxes = M.fromJust $ fromList mailboxes0
   pure mailboxes
       where
@@ -257,7 +266,7 @@ setShowDesc b t = t { showDesc = b }
 
 changeShowDesc :: EventM ResourceName TuiState ()
 changeShowDesc = do
-  prev <- gets showDesc 
+  prev <- gets showDesc
   modify $ setShowDesc $ not prev
 
 
@@ -314,10 +323,10 @@ data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox
 data ButtonPressed x = Button x | None
 
 data TuiState = TuiState { currentDisplay :: CurrentDisplay
-                         , showDesc       :: Bool 
-                         , showHelp       :: Bool 
+                         , showDesc       :: Bool
+                         , showHelp       :: Bool
                          , mailBoxes      :: MailBoxes
-                         , buttonPressed  :: ButtonPressed Char 
+                         , buttonPressed  :: ButtonPressed Char
                          , editorState    :: Editor T.Text ResourceName
                          , newFeedUrl     :: Maybe URL
                          , feedList       :: Zipper (URL, T.Text) }
@@ -330,9 +339,9 @@ drawAddFeedEditor :: TuiState -> Widget ResourceName
 drawAddFeedEditor ts = renderEditor (txt . T.unlines) True (editorState ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
-drawTui ts 
+drawTui ts
   | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
-  | otherwise   = vBox ([border $ drawAddFeedEditor ts | edit] <> [toDraw]) : []
+  | otherwise   = [vBox ([toDraw] <> [border $ drawAddFeedEditor ts | edit])]
     where
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
@@ -344,74 +353,74 @@ drawTui ts
         ShowFeeds       -> drawFeedList ts
         ChooseMailbox   -> drawHome $ mailBoxes ts
       edit   = case buttonPressed ts of
-        Button 'e' -> True
+        Button 'n' -> True
         _   -> False
 
 drawFeedList :: TuiState -> Widget ResourceName
-drawFeedList ts = viewport GeneralViewport Vertical 
+drawFeedList ts = viewport FeedsViewport Vertical
   $ vBox $ toList $ fmap (drawFeedEntry $ getCurrent fl) fl
     where
       fl = feedList ts
 
 drawFeedEntry :: (URL, T.Text) -> (URL, T.Text) -> Widget n
 drawFeedEntry curFd fd = border $ padRight Max $  vBox [ withAttr a $ txt $ fst fd, withAttr sourceAttr $ txt (snd fd)]
-  where 
+  where
     isCurrent = fd == curFd
     a :: AttrName
-    a = if isCurrent then greenAttr else blueAttr 
+    a = if isCurrent then greenAttr else blueAttr
 
 
 drawHome :: Eq b => Zipper (String, b) -> Widget ResourceName
-drawHome mailboxes = viewport GeneralViewport Vertical 
-  $ vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes 
+drawHome mailboxes = viewport MailboxesViewport Vertical
+  $ vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes
 
 drawMailBoxEntry :: Eq b => (String, b) -> (String, b) -> Widget n
 drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
-  where 
+  where
     isCurrent = mb == curMb
     a :: AttrName
-    a = if isCurrent then greenAttr else blueAttr 
+    a = if isCurrent then greenAttr else blueAttr
 
 drawMailBox :: TuiState -> Widget ResourceName
-drawMailBox ts = viewport GeneralViewport Vertical 
+drawMailBox ts = viewport EntriesViewport Vertical
   $ vBox $ toList $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
     ents      = snd $ getCurrent $ mailBoxes ts
     currEnt   = getCurrent ents
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
-drawEntry showDesc currEnt ent =  
-  toView $ overrideAttr borderAttr (if current && showDesc then greenAttr else if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox 
+drawEntry showDesc currEnt ent =
+  toView $ overrideAttr borderAttr (if current && showDesc then greenAttr else if not $ isRead ent then blueAttr else readAttr) $ border $ padRight Max $ vBox
       [
         hBox [
-              drawField (title ent) a 
-            , padLeft Max $ withAttr b $ drawTime (pubTime ent) 
+              drawField (title ent) a
+            , padLeft Max $ withAttr b $ drawTime (pubTime ent)
             ]
       , padRight (Pad 30) $ padTop (Pad 1) $ padBottom (Pad 1) desc
       , drawField (source ent) (if not $ isRead ent then sourceAttr else readAttr)
       ]
-  where 
+  where
     current = currEnt == ent
     a :: AttrName
-    a = if current then greenAttr else (if not $ isRead ent then blueAttr else readAttr) 
+    a = if current then greenAttr else (if not $ isRead ent then blueAttr else readAttr)
     b :: AttrName
     b = if current then greenAttr else timeAttr
     toView :: Widget n -> Widget n
     toView = if current then visible else id
     drawTime :: Maybe UTCTime -> Widget n
-    drawTime Nothing  = emptyWidget 
+    drawTime Nothing  = emptyWidget
     drawTime (Just t) = str $ show t
     desc :: Widget n
-    desc = if showDesc && current && hasDescription then txtWrap $ M.fromJust $ description ent else emptyWidget 
+    desc = if showDesc && current && hasDescription then txtWrap $ M.fromJust $ description ent else emptyWidget
     hasDescription = case description ent of
       Nothing -> False
       Just _  -> True
 
 drawHelp :: ButtonPressed Char -> Bool -> Widget n
-drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $ 
-              hBox 
-                [ padRight Max $ 
-                    vBox [hCenter $ str x | x <- buttons], 
+drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
+              hBox
+                [ padRight Max $
+                    vBox [hCenter $ str x | x <- buttons],
                     vBox [hCenter $ str x | x <- descriptions]
                 ]
                 where
