@@ -59,6 +59,7 @@ addMailbox ev = case ev of
     let name = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
     mb <- gets mailBoxes 
     modify $ setMailBoxes (add (T.unpack name,Zipper [] fallbackEntry []) mb)
+    insertMailbox name
     modify $ setButtonPressed None
   _                              -> zoom editorStateL (handleEditorEvent ev)
   where
@@ -339,6 +340,7 @@ type MailBoxes   = Zipper (MailboxName, Mailbox)
 data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox
 
 data ButtonPressed x = Button x | None
+  deriving Eq
 
 data TuiState = TuiState { currentDisplay   :: CurrentDisplay
                          , showDesc         :: Bool
@@ -354,13 +356,13 @@ data TuiState = TuiState { currentDisplay   :: CurrentDisplay
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
-drawAddFeedEditor :: TuiState -> Widget ResourceName
-drawAddFeedEditor ts = renderEditor (txt . T.unlines) True (addFeedEditor ts)
+drawEditor :: TuiState -> (TuiState -> Editor T.Text ResourceName) -> Widget ResourceName
+drawEditor ts editor' = renderEditor (txt . T.unlines) True (editor' ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts
   | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
-  | otherwise   = [vBox ([toDraw] <> [border $ drawAddFeedEditor ts | edit])]
+  | otherwise   = [toDraw]
     where
       inBox = case currentDisplay ts of
         ShowMailboxList -> False
@@ -368,16 +370,13 @@ drawTui ts
       -- toDraw = if inBox then drawMailBox ts else drawHome $ mailBoxes ts
       toDraw = case currentDisplay ts of
         ShowEntries     -> drawMailBox ts
-        ShowMailboxList -> drawHome $ mailBoxes ts
+        ShowMailboxList -> drawHome ts
         ShowFeeds       -> drawFeedList ts
-        ChooseMailbox   -> drawHome $ mailBoxes ts
-      edit   = case buttonPressed ts of
-        Button 'n' -> True
-        _   -> False
+        ChooseMailbox   -> drawHome ts
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
-  $ vBox $ toList $ fmap (drawFeedEntry $ getCurrent fl) fl
+  $ vBox $ toList ( fmap (drawFeedEntry $ getCurrent fl) fl) <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
     where
       fl = feedList ts
 
@@ -389,9 +388,11 @@ drawFeedEntry curFd fd = border $ padRight Max $  vBox [ withAttr a $ txt $ fst 
     a = if isCurrent then greenAttr else blueAttr
 
 
-drawHome :: Eq b => Zipper (String, b) -> Widget ResourceName
-drawHome mailboxes = viewport MailboxesViewport Vertical
-  $ vBox $ toList $ fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes
+drawHome :: TuiState -> Widget ResourceName
+drawHome ts = viewport MailboxesViewport Vertical
+  $ vBox $ toList (fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n']
+    where 
+      mailboxes = mailBoxes ts
 
 drawMailBoxEntry :: Eq b => (String, b) -> (String, b) -> Widget n
 drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb

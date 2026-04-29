@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables) where
+module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -82,7 +82,11 @@ getFeeds = withSQLite "newsreader.db" $ do
     mailbox <- select dbMailboxes
     restrict (feed ! #mailboxID .== mailbox ! #mID)
     pure (feed ! #url :*: mailbox ! #name)
-  pure [ (u, mbName) | u :*: mbName <- rows ]
+  pure [(u, mbName) | u :*: mbName <- rows ]
+
+insertMailbox :: (MonadIO m, MonadMask m) => Text -> m ()
+insertMailbox mailboxName = withSQLite "newsreader.db" $ do
+  insert_ dbMailboxes [DbMailbox def mailboxName]
 
 
 addFeedToMailbox :: (MonadIO m, MonadMask m) => URL -> Text -> m ()
@@ -91,7 +95,6 @@ addFeedToMailbox url mailboxName = withSQLite "newsreader.db" $ do
   mailboxID <- case mid of
     (x:_) -> pure x
     []    -> insertWithPK dbMailboxes [DbMailbox def mailboxName]
-
   insert_ dbFeeds [DbFeeds def mailboxID url]
 
 refreshAll :: IO ()
