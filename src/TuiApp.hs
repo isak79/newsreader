@@ -54,17 +54,20 @@ handleTuiEvent ev = do
     _                             -> handleNormal ev
 
 
+renameFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let url         = T.strip . T.unlines . getEditContents $ addFeedEditor ts
         fl          = feedList ts
+        oldUrl      = fst $ getCurrent fl
         newFeedList = updateCurrentItem (url, snd $ getCurrent fl) fl
     modify $ setNewFeedUrl (Just url)
     modify $ setButtonPressed None
     modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
     modify $ setFeedList newFeedList 
+    liftIO $ updateFeedUrl oldUrl url
   _      -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addFeedEditor (\s e -> s { addFeedEditor = e })

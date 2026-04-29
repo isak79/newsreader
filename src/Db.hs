@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox) where
+module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -142,6 +142,10 @@ fetchEntries mailboxName = withSQLite "newsreader.db" $ do
     pure dbEntry
   pure $ map fromDbEntry result
 
+updateFeedUrl :: URL -> URL -> IO ()
+updateFeedUrl oldUrl newUrl = withSQLite "newsreader.db" $ do
+  update_ dbFeeds (\row -> row ! #url .== literal oldUrl) (\row -> row `with` [#url := literal newUrl])
+  
 
 readEntry :: Bool -> Entry -> IO ()
 readEntry b ent = withSQLite "newsreader.db" $ do
