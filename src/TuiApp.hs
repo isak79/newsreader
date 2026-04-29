@@ -338,6 +338,7 @@ type Mailbox     = Zipper Entry
 type MailBoxes   = Zipper (MailboxName, Mailbox)
 
 data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox
+  deriving Eq
 
 data ButtonPressed x = Button x | None
   deriving Eq
@@ -361,7 +362,7 @@ drawEditor ts editor' = renderEditor (txt . T.unlines) True (editor' ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts
-  | showHelp ts = [drawHelp (buttonPressed ts) inBox , toDraw]
+  | showHelp ts = [drawHelp ts, toDraw]
   | otherwise   = [toDraw]
     where
       inBox = case currentDisplay ts of
@@ -436,8 +437,8 @@ drawEntry showDesc currEnt ent =
       Nothing -> False
       Just _  -> True
 
-drawHelp :: ButtonPressed Char -> Bool -> Widget n
-drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
+drawHelp :: TuiState -> Widget n
+drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
               hBox
                 [ padRight Max $
                     vBox [hCenter $ str x | x <- buttons],
@@ -453,6 +454,9 @@ drawHelp bp box =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help"
                   descriptions = case bp of
                     Button 'm' -> ["read", "unread"]
                     _          -> ["exitApp",nextItem',prevItem',goTo] <> ["markAs..."| box] <> ["refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]
+                  box = currentDisplay ts == ShowMailboxList
+                  bp  = buttonPressed ts
+
 
 drawField :: T.Text -> AttrName -> Widget n
 drawField t a = withAttr a $ txt t
