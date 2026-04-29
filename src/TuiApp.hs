@@ -56,7 +56,9 @@ handleTuiEvent ev = do
 
 renameFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameFeed ev = case ev of
-  (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
+  (VtyEvent (V.EvKey V.KEsc [])) -> do
+    modify $ setButtonPressed None
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let url         = T.strip . T.unlines . getEditContents $ addFeedEditor ts
@@ -90,13 +92,16 @@ addMailbox ev = case ev of
 -- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
 addFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addFeed ev = case ev of
-  (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
+  (VtyEvent (V.EvKey V.KEsc [])) -> do 
+    modify $ setButtonPressed None
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let url = T.strip . T.unlines . getEditContents $ addFeedEditor ts
     modify $ setNewFeedUrl (Just url)
     modify $ setButtonPressed None
     modify $ setCurrentDisplay ChooseMailbox
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
   _                              -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addFeedEditor (\s e -> s { addFeedEditor = e })
