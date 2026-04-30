@@ -168,14 +168,6 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
       modify $ setButtonPressed $ Button 'e'
       pure ()
     _         -> pure ()
--- handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = do
---   ts <- get
---   case currentDisplay ts of
---     ShowFeeds -> do
---       let url = fst $ getCurrent $ feedList ts
---       modify $ setNewFeedUrl (Just url)
---     _         -> pure ()
-
 handleNormal _ = pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
@@ -462,13 +454,14 @@ drawFeedList ts = viewport FeedsViewport Vertical
       fl = feedList ts
 
 drawFeedEntry :: TuiState -> (URL, T.Text) -> (URL, T.Text) -> Widget ResourceName
-drawFeedEntry ts curFd fd = border $ padRight Max $  vBox [withAttr a url, withAttr sourceAttr $ txt (snd fd)]
+drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a url, withAttr sourceAttr $ txt (snd fd)]
   where
     isCurrent = fd == curFd
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
     url = if isCurrent && (buttonPressed ts == Button 'e') then drawEditor ts addFeedEditor else txt $ fst fd
-
+    toView :: Widget n -> Widget n
+    toView = if isCurrent then visible else id
 
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = viewport MailboxesViewport Vertical
@@ -477,12 +470,14 @@ drawHome ts = viewport MailboxesViewport Vertical
       mailboxes = mailBoxes ts
 
 drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
-drawMailBoxEntry ts curMb mb = border $ padRight Max $ withAttr a mbName
+drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbName
   where
     isCurrent = mb == curMb
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
     mbName = if isCurrent && (buttonPressed ts == Button 'e') then drawEditor ts addMailboxEditor else txt $ T.pack $ fst mb
+    toView :: Widget n -> Widget n
+    toView = if isCurrent then visible else id
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport EntriesViewport Vertical
