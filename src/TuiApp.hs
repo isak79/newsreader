@@ -49,9 +49,30 @@ handleTuiEvent ev = do
   case (currentDisplay ts,buttonPressed ts) of
     (ShowFeeds, Button 'n')       -> addFeed ev
     (ShowMailboxList, Button 'n') -> addMailbox ev
-    (ShowFeeds, Button 'e')       -> do
-      renameFeed ev
+    (ShowFeeds, Button 'e')       -> renameFeed ev
+    (ShowMailboxList, Button 'e') -> renameMailbox ev
     _                             -> handleNormal ev
+
+
+renameMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
+renameMailbox ev = case ev of
+  (VtyEvent (V.EvKey V.KEsc [])) -> do
+    modify $ setButtonPressed None
+    modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
+  (VtyEvent (V.EvKey V.KEnter [])) -> do
+    ts <- get
+    let mbName      = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
+        mbs         = mailBoxes ts
+        oldName      = fst $ getCurrent mbs
+        newMbs = updateCurrentItem (T.unpack mbName, snd $ getCurrent mbs) mbs
+    modify $ setMailBoxes newMbs 
+    modify $ setButtonPressed None
+    modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
+    modify $ setMailBoxes newMbs 
+    liftIO $ updateMailboxName (T.pack oldName) mbName
+  _      -> zoom editorStateL (handleEditorEvent ev)
+  where
+    editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
 
 
 renameFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
@@ -132,8 +153,13 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
       let url = fst $ getCurrent $ feedList ts
       modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) url })
       modify $ setButtonPressed $ Button 'e'
+    ShowMailboxList -> do
+      let mbName = fst $ getCurrent $ mailBoxes ts
+      modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack mbName })
+      modify $ setButtonPressed $ Button 'e'
+      pure ()
     _         -> pure ()
-handleNormal _                                     = pure ()
+handleNormal _ = pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
 refillMailboxes :: EventM ResourceName TuiState ()
@@ -424,16 +450,17 @@ drawFeedEntry ts curFd fd = border $ padRight Max $  vBox [withAttr a url, withA
 
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = viewport MailboxesViewport Vertical
-  $ vBox $ toList (fmap (drawMailBoxEntry $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n']
+  $ vBox $ toList (fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n']
     where 
       mailboxes = mailBoxes ts
 
-drawMailBoxEntry :: Eq b => (String, b) -> (String, b) -> Widget n
-drawMailBoxEntry curMb mb = border $ padRight Max $ withAttr a $ str $ fst mb
+drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
+drawMailBoxEntry ts curMb mb = border $ padRight Max $ withAttr a mbName
   where
     isCurrent = mb == curMb
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
+    mbName = if isCurrent && (buttonPressed ts == Button 'e') then drawEditor ts addMailboxEditor else txt $ T.pack $ fst mb
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport EntriesViewport Vertical
