@@ -271,7 +271,6 @@ activateItem = do
         if currEntry /= fallbackEntry then do
           markEntry True
           liftIO $ openUrl $ T.unpack $ source currEntry
-          pure ()
         else pure ()
 
 -- | Update the states display element
@@ -345,7 +344,7 @@ fillMailboxes :: IO MailBoxes
 fillMailboxes = do
   mbs <- fetchMailboxes
   mailboxes0 <- if null mbs
-      then pure [("Empty mailbox", Zipper [] fallbackEntry [])]
+      then pure [("Default mailbox", Zipper [] fallbackEntry [])]
       else traverse mkMailbox mbs
   let mailboxes = M.fromJust $ fromList mailboxes0
   pure mailboxes
