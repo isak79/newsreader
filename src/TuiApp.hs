@@ -139,7 +139,7 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'G') [])) = switchItem Bottom
 handleNormal (VtyEvent (V.EvKey (V.KChar '?') [])) = toggleShowHelp
 handleNormal (VtyEvent (V.EvKey (V.KChar '-') [])) = modify $ setCurrentDisplay ShowMailboxList
 handleNormal (VtyEvent (V.EvKey V.KEnter []))      = activateItem
-handleNormal (VtyEvent (V.EvKey V.KEsc []))        = modify $ setButtonPressed None
+handleNormal (VtyEvent (V.EvKey V.KEsc []))        = abort
 handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR
 handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
 handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = do
@@ -169,6 +169,16 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
       pure ()
     _         -> pure ()
 handleNormal _ = pure ()
+
+abort :: EventM ResourceName TuiState ()
+abort = do
+  cd <- gets currentDisplay 
+  case cd of
+    ChooseMailbox -> do
+      modify $ setButtonPressed None
+      modify $ setCurrentDisplay ShowFeeds
+    _             -> modify $ setButtonPressed None
+  pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
 refillMailboxes :: EventM ResourceName TuiState ()
@@ -465,7 +475,7 @@ drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a u
 
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = viewport MailboxesViewport Vertical
-  $ vBox $ toList (fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n']
+  $ vBox $ toList (fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
     where 
       mailboxes = mailBoxes ts
 
@@ -518,21 +528,68 @@ drawHelp :: TuiState -> Widget n
 drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
               hBox
                 [ padRight Max $
-                    vBox [hCenter $ str x | x <- buttons],
-                    vBox [hCenter $ str x | x <- descriptions]
+                    vBox [hCenter $ str $ fst x | x <- buttonDesc],
+                    vBox [hCenter $ str $ snd x | x <- buttonDesc]
                 ]
                 where
-                  goTo = if box then "goToUrl" else "goToMailbox"
-                  nextItem' = if box then "nextEntry" else "nextMailbox"
-                  prevItem' = if box then "prevEntry" else "prevMailbox"
-                  buttons = case bp of
-                    Button 'm' -> ["r","u"]
-                    _          -> ["q","j/<down>","k/<up>","<enter>"] <> ["m" | box]<> ["r","g","G","d","?","-"]
-                  descriptions = case bp of
-                    Button 'm' -> ["read", "unread"]
-                    _          -> ["exitApp",nextItem',prevItem',goTo] <> ["markAs..."| box] <> ["refreshAll","goToTop","goToBottom","toggleDescription","toggleHelp","goToMailboxList"]
-                  box = currentDisplay ts == ShowMailboxList
-                  bp  = buttonPressed ts
+                  buttonDesc = case (currentDisplay ts, buttonPressed ts) of
+                    (ShowEntries, None) 
+                                            ->   [ ("q","quit")
+                                                 , ("j/<down>", "nextEntry")
+                                                 , ("k/<up>","prevEntry")
+                                                 , ("<enter>","goToUrl")
+                                                 , ("m","markAs...")
+                                                 , ("r","refreshAll")
+                                                 , ("g","goToTop")
+                                                 , ("G","goToBottom")
+                                                 , ("d","toggleDescription")
+                                                 , ("?","toggleShowHelp")
+                                                 , ("-","goToMailBoxes")
+                                                 , ("f","goToFeeds") ]
+                    (ShowEntries, Button 'm') 
+                                            ->   [ ("r","...read")
+                                                 , ("u","...unread") ]
+                    (ShowFeeds, None)            
+                                            ->   [ ("q","quit")
+                                                 , ("j/<down>", "nextFeed")
+                                                 , ("k/<up>","prevFeed")
+                                                 , ("m","moveTo...")
+                                                 , ("r","refreshAll")
+                                                 , ("g","goToTop")
+                                                 , ("G","goToBottom")
+                                                 , ("?","toggleShowHelp")
+                                                 , ("-","goToMailBoxes")
+                                                 , ("e","editUrl")
+                                                 , ("n","newFeed")]
+
+                    (ShowFeeds, Button 'e')  ->  [ ("<enter>","acceptChanges") 
+                                                 , ("<esc>","abort")]
+
+                    (ShowFeeds, Button 'n')  ->  [ ("<enter>","addUrl -> chooseMailbox") 
+                                                 , ("<esc>","abort")]
+
+                    (ShowMailboxList, None)  ->  [ ("q","quit")
+                                                 , ("j/<down>", "nextFeed")
+                                                 , ("k/<up>","prevFeed")
+                                                 , ("<enter>","goToMailbox")
+                                                 , ("r","refreshAll")
+                                                 , ("g","goToTop")
+                                                 , ("G","goToBottom")
+                                                 , ("?","toggleShowHelp")
+                                                 , ("e","editMailboxName")
+                                                 , ("n","newMailbox") ]
+
+                    (ShowMailboxList, Button 'e')  
+                                             ->  [ ("<enter>","acceptChanges") 
+                                                 , ("<esc>","abort")]
+
+                    (ShowMailboxList, Button 'n')  
+                                             ->  [ ("<enter>","createMailbox") 
+                                                 , ("<esc>","abort")]
+
+                    (ChooseMailbox, _)       ->  [ ("<enter>","chooseMailbox")
+                                                 , ("<esc>","abortOperation") ]
+                    _                       -> []
 
 
 drawField :: T.Text -> AttrName -> Widget n
