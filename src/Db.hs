@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl, updateMailboxName, moveFeed) where
+module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl, updateMailboxName, moveFeed, deleteFeed) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -25,6 +25,14 @@ dbEntries :: Table DbEntry
 dbEntries = table "entries" [ #eID   :- autoPrimary
                             , #dedup :- unique]
 
+deleteFeed :: (MonadIO m, MonadMask m) => Text -> m ()
+deleteFeed feedUrl = withSQLite "newsreader.db" $ do
+  feedID <- query $ do
+    feed <- select dbFeeds
+    restrict (feed ! #url .== literal feedUrl)
+    pure (feed ! #fID)
+  deleteFrom_ dbFeeds (\r -> r ! #fID .== literal (head feedID))
+  deleteFrom_ dbEntries (\r -> r ! #feedID .== literal (head feedID))
 
 toDbEntry  ::  ID DbFeeds -> Entry -> DbEntry
 toDbEntry feedid ent = DbEntry {
@@ -168,5 +176,5 @@ updateMailboxName oldName newName = withSQLite "newsreader.db" $ do
 readEntry :: Bool -> Entry -> IO ()
 readEntry b ent = withSQLite "newsreader.db" $ do
   case b of 
-    True  -> update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := true])
-    False -> update_ dbEntries (\row -> row ! #dbSource .== literal (source ent)) (\row -> row `with` [#dbIsRead := false])
+    True  -> update_ dbEntries (\r -> r ! #dbSource .== literal (source ent)) (\r -> r `with` [#dbIsRead := true])
+    False -> update_ dbEntries (\r -> r ! #dbSource .== literal (source ent)) (\r -> r `with` [#dbIsRead := false])

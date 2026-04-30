@@ -19,12 +19,13 @@ import Lens.Micro
 import Data.Maybe (fromJust)
 
 
-blueAttr, greenAttr, sourceAttr, timeAttr, readAttr :: AttrName
+blueAttr, greenAttr, sourceAttr, timeAttr, readAttr, warningAttr :: AttrName
 readAttr = attrName "readBorder"
 blueAttr = attrName "title"
 greenAttr = attrName "selectedTitle"
 sourceAttr = attrName "source"
 timeAttr = attrName "time"
+warningAttr = attrName "warningAttr"
 
 -- | The main function that ties the whole program together
 runApp :: IO ()
@@ -34,7 +35,8 @@ runApp = do
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
                                                               , (sourceAttr, fg V.yellow)
-                                                              , (borderAttr, fg V.white) ]
+                                                              , (borderAttr, fg V.white) 
+                                                              , (warningAttr, fg V.red) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
@@ -51,8 +53,21 @@ handleTuiEvent ev = do
     (ShowMailboxList, Button 'n') -> addMailbox ev
     (ShowFeeds, Button 'e')       -> renameFeed ev
     (ShowMailboxList, Button 'e') -> renameMailbox ev
+    (_, Button 'D')               -> handleDelete ev
     _                             -> handleNormal ev
 
+
+handleDelete ev = do
+  ts <- get
+  case (currentDisplay ts, ev) of
+    (ShowFeeds, VtyEvent (V.EvKey (V.KChar 'Y') [])) -> do
+      deleteFeed $ fst $ getCurrent $ feedList ts
+      modify $ setButtonPressed None
+      feeds <- liftIO safeFeeds 
+      mb    <- liftIO fillMailboxes 
+      modify $ setFeedList $ M.fromJust $ fromList feeds
+      modify $ setMailBoxes mb
+    _                                              -> modify $ setButtonPressed None
 
 renameMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameMailbox ev = case ev of
@@ -168,6 +183,12 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
       modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack mbName })
       modify $ setButtonPressed $ Button 'e'
       pure ()
+    _         -> pure ()
+handleNormal (VtyEvent (V.EvKey (V.KChar 'D') [])) = do
+  ts <- get
+  case currentDisplay ts of
+    ShowFeeds -> do
+      modify $ setButtonPressed (Button 'D')
     _         -> pure ()
 handleNormal _ = pure ()
 
@@ -461,7 +482,8 @@ drawTui ts
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
-  $ vBox $ toList (fmap (drawFeedEntry ts $ getCurrent fl) fl) <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
+  $ vBox $ toList (fmap (drawFeedEntry ts $ getCurrent fl) fl)
+    <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
     where
       fl = feedList ts
 
@@ -471,7 +493,10 @@ drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a u
     isCurrent = fd == curFd
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
-    url = if isCurrent && (buttonPressed ts == Button 'e') then drawEditor ts addFeedEditor else txt $ fst fd
+    url
+      | isCurrent && (buttonPressed ts == Button 'e') = drawEditor ts addFeedEditor
+      | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Are you sure you want to delete this feed? This action can not be undone. Press 'Y' to confirm"
+      | otherwise = txt $ fst fd
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
 
