@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl, updateMailboxName) where
+module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl, updateMailboxName, moveFeed) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -60,16 +60,30 @@ data DbMailbox = DbMailbox {
 instance SqlRow DbMailbox
 
 dbMailboxes :: Table DbMailbox 
-dbMailboxes = table "mailboxes" [#mID :- autoPrimary]
+dbMailboxes = table "mailboxes" [ #mID  :- autoPrimary
+                                , #name :- unique ]
 
 
 data DbFeeds = DbFeeds {
-    fID :: ID DbFeeds
+    fID       :: ID DbFeeds
   , mailboxID :: ID DbMailbox
-  , url :: URL
+  , url       :: URL
   } deriving (Eq, Show, Generic)
 
 instance SqlRow DbFeeds
+
+moveFeed :: (MonadMask m, MonadIO m) => Text -> Text -> m ()
+moveFeed url newMb = withSQLite "newsreader.db" $ do
+  -- feed <- select dbFeeds
+  -- restrict (feed ! #url .== literal url)
+  mb <- query $ do
+    mailbox <- select dbMailboxes 
+    restrict (mailbox ! #name .== literal newMb)
+    pure (mailbox ! #mID) 
+  case mb of
+    [m] -> update_ dbFeeds (\row -> row ! #url .== literal url) (\row -> row `with` [#mailboxID := literal m ])
+    _   -> pure ()
+
 
 dbFeeds :: Table DbFeeds
 dbFeeds = table "feeds" [ #fID :- autoPrimary
