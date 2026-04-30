@@ -120,7 +120,6 @@ addFeed ev = case ev of
     ts <- get
     let url = T.strip . T.unlines . getEditContents $ addFeedEditor ts
     modify $ setNewFeedUrl (Just url)
-    modify $ setButtonPressed None
     modify $ setCurrentDisplay ChooseMailbox
     modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
   _                              -> zoom editorStateL (handleEditorEvent ev)
@@ -143,7 +142,17 @@ handleNormal (VtyEvent (V.EvKey V.KEnter []))      = activateItem
 handleNormal (VtyEvent (V.EvKey V.KEsc []))        = modify $ setButtonPressed None
 handleNormal (VtyEvent (V.EvKey (V.KChar 'r') [])) = pressR
 handleNormal (VtyEvent (V.EvKey (V.KChar 'u') [])) = pressU
-handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = modify $ setButtonPressed (Button 'm')
+handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = do
+  ts <- get
+  case currentDisplay ts of
+    ShowEntries -> modify $ setButtonPressed (Button 'm')
+    ShowFeeds   -> do
+      feed <- gets feedList
+      let currURL = fst $ getCurrent feed
+      modify $ setNewFeedUrl (Just currURL) 
+      modify $ setCurrentDisplay ChooseMailbox
+      modify $ setButtonPressed (Button 'm')
+    _           -> pure ()
 handleNormal (VtyEvent (V.EvKey (V.KChar 'n') [])) = modify $ setButtonPressed (Button 'n')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'f') [])) = modify $ setCurrentDisplay ShowFeeds
 handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
@@ -159,6 +168,14 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
       modify $ setButtonPressed $ Button 'e'
       pure ()
     _         -> pure ()
+-- handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = do
+--   ts <- get
+--   case currentDisplay ts of
+--     ShowFeeds -> do
+--       let url = fst $ getCurrent $ feedList ts
+--       modify $ setNewFeedUrl (Just url)
+--     _         -> pure ()
+
 handleNormal _ = pure ()
 
 -- | Fetches every feeed user is currently subscribed to, updates the database, and loads everything into memory
@@ -229,15 +246,20 @@ setNewFeedUrl url ts = ts { newFeedUrl = url }
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
   curDisplay    <- gets currentDisplay
+  bp            <- gets buttonPressed 
   case curDisplay of
      ShowMailboxList  -> modify $ setCurrentDisplay ShowEntries
      ChooseMailbox    -> do
         mb <- gets mailBoxes
         let currMb = getCurrent mb
         url <- gets newFeedUrl
-        addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
+        case bp of 
+          Button 'n' -> addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
+          Button 'm' -> moveFeed (M.fromJust url) $ T.pack $ fst currMb
+          _          -> pure ()
         modify $ setCurrentDisplay ShowFeeds
         modify $ setNewFeedUrl Nothing
+        modify $ setButtonPressed None
         feed <- liftIO safeFeeds 
         modify $ setFeedList $ M.fromJust $ fromList feed
      ShowFeeds -> pure ()
