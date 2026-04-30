@@ -344,7 +344,9 @@ fillMailboxes :: IO MailBoxes
 fillMailboxes = do
   mbs <- fetchMailboxes
   mailboxes0 <- if null mbs
-      then pure [("Default mailbox", Zipper [] fallbackEntry [])]
+      then do
+        insertMailbox $ T.pack "Default mailbox"
+        pure [("Default mailbox", Zipper [] fallbackEntry [])]
       else traverse mkMailbox mbs
   let mailboxes = M.fromJust $ fromList mailboxes0
   pure mailboxes
