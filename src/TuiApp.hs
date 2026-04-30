@@ -29,7 +29,7 @@ timeAttr = attrName "time"
 -- | The main function that ties the whole program together
 runApp :: IO ()
 runApp = do
-  initializeTables 
+  initializeTables
   tuiState <- buildState
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
@@ -65,10 +65,10 @@ renameMailbox ev = case ev of
         mbs         = mailBoxes ts
         oldName      = fst $ getCurrent mbs
         newMbs = updateCurrentItem (T.unpack mbName, snd $ getCurrent mbs) mbs
-    modify $ setMailBoxes newMbs 
+    modify $ setMailBoxes newMbs
     modify $ setButtonPressed None
     modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
-    modify $ setMailBoxes newMbs 
+    modify $ setMailBoxes newMbs
     liftIO $ updateMailboxName (T.pack oldName) mbName
   _      -> zoom editorStateL (handleEditorEvent ev)
   where
@@ -89,7 +89,7 @@ renameFeed ev = case ev of
     modify $ setNewFeedUrl (Just url)
     modify $ setButtonPressed None
     modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
-    modify $ setFeedList newFeedList 
+    modify $ setFeedList newFeedList
     liftIO $ updateFeedUrl oldUrl url
   _      -> zoom editorStateL (handleEditorEvent ev)
   where
@@ -102,7 +102,7 @@ addMailbox ev = case ev of
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let name = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
-    mb <- gets mailBoxes 
+    mb <- gets mailBoxes
     modify $ setMailBoxes (add (T.unpack name,Zipper [] fallbackEntry []) mb)
     insertMailbox name
     modify $ setButtonPressed None
@@ -113,7 +113,7 @@ addMailbox ev = case ev of
 -- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
 addFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addFeed ev = case ev of
-  (VtyEvent (V.EvKey V.KEsc [])) -> do 
+  (VtyEvent (V.EvKey V.KEsc [])) -> do
     modify $ setButtonPressed None
     modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
   (VtyEvent (V.EvKey V.KEnter [])) -> do
@@ -149,7 +149,7 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = do
     ShowFeeds   -> do
       feed <- gets feedList
       let currURL = fst $ getCurrent feed
-      modify $ setNewFeedUrl (Just currURL) 
+      modify $ setNewFeedUrl (Just currURL)
       modify $ setCurrentDisplay ChooseMailbox
       modify $ setButtonPressed (Button 'm')
     _           -> pure ()
@@ -172,7 +172,7 @@ handleNormal _ = pure ()
 
 abort :: EventM ResourceName TuiState ()
 abort = do
-  cd <- gets currentDisplay 
+  cd <- gets currentDisplay
   case cd of
     ChooseMailbox -> do
       modify $ setButtonPressed None
@@ -248,32 +248,31 @@ setNewFeedUrl url ts = ts { newFeedUrl = url }
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
   curDisplay    <- gets currentDisplay
-  bp            <- gets buttonPressed 
+  bp            <- gets buttonPressed
   case curDisplay of
      ShowMailboxList  -> modify $ setCurrentDisplay ShowEntries
      ChooseMailbox    -> do
         mb <- gets mailBoxes
         let currMb = getCurrent mb
         url <- gets newFeedUrl
-        case bp of 
+        case bp of
           Button 'n' -> addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
           Button 'm' -> moveFeed (M.fromJust url) $ T.pack $ fst currMb
           _          -> pure ()
         modify $ setCurrentDisplay ShowFeeds
         modify $ setNewFeedUrl Nothing
         modify $ setButtonPressed None
-        feed <- liftIO safeFeeds 
+        feed <- liftIO safeFeeds
         modify $ setFeedList $ M.fromJust $ fromList feed
      ShowFeeds -> pure ()
      ShowEntries    -> do
         mailBoxes   <- gets mailBoxes
         let currEntry = getCurrent $ snd $ getCurrent mailBoxes
-        case currEntry of
-          fallbackEntry -> pure ()
-          _             -> do
-            markEntry True
-            liftIO $ openUrl $ T.unpack $ source currEntry
-            pure ()
+        if currEntry /= fallbackEntry then do
+          markEntry True
+          liftIO $ openUrl $ T.unpack $ source currEntry
+          pure ()
+        else pure ()
 
 -- | Update the states display element
 setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
@@ -330,7 +329,7 @@ safeFeeds = do
 buildState :: IO TuiState
 buildState = do
   mailboxes <- fillMailboxes
-  feeds     <- safeFeeds 
+  feeds     <- safeFeeds
   pure TuiState { currentDisplay   = ShowMailboxList
                 , showDesc         = False
                 , showHelp         = False
@@ -345,7 +344,7 @@ buildState = do
 fillMailboxes :: IO MailBoxes
 fillMailboxes = do
   mbs <- fetchMailboxes
-  mailboxes0 <- if null mbs 
+  mailboxes0 <- if null mbs
       then pure [("Empty mailbox", Zipper [] fallbackEntry [])]
       else traverse mkMailbox mbs
   let mailboxes = M.fromJust $ fromList mailboxes0
@@ -416,7 +415,7 @@ getCurrent (Zipper _ y _) = y
 updateCurrentItem :: a -> Zipper a -> Zipper a
 updateCurrentItem z (Zipper xs _ zs) = Zipper xs z zs
 
-add :: a -> Zipper a -> Zipper a 
+add :: a -> Zipper a -> Zipper a
 add a (Zipper as b cs) = Zipper as b (cs <> [a])
 
 
@@ -477,7 +476,7 @@ drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a u
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = viewport MailboxesViewport Vertical
   $ vBox $ toList (fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
-    where 
+    where
       mailboxes = mailBoxes ts
 
 drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
@@ -534,7 +533,7 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                 ]
                 where
                   buttonDesc = case (currentDisplay ts, buttonPressed ts) of
-                    (ShowEntries, None) 
+                    (ShowEntries, None)
                                             ->   [ ("q","quit")
                                                  , ("j/<down>", "nextEntry")
                                                  , ("k/<up>","prevEntry")
@@ -547,10 +546,10 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                                                  , ("?","toggleShowHelp")
                                                  , ("-","goToMailBoxes")
                                                  , ("f","goToFeeds") ]
-                    (ShowEntries, Button 'm') 
+                    (ShowEntries, Button 'm')
                                             ->   [ ("r","...read")
                                                  , ("u","...unread") ]
-                    (ShowFeeds, None)            
+                    (ShowFeeds, None)
                                             ->   [ ("q","quit")
                                                  , ("j/<down>", "nextFeed")
                                                  , ("k/<up>","prevFeed")
@@ -563,10 +562,10 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                                                  , ("e","editUrl")
                                                  , ("n","newFeed")]
 
-                    (ShowFeeds, Button 'e')  ->  [ ("<enter>","acceptChanges") 
+                    (ShowFeeds, Button 'e')  ->  [ ("<enter>","acceptChanges")
                                                  , ("<esc>","abort")]
 
-                    (ShowFeeds, Button 'n')  ->  [ ("<enter>","addUrl -> chooseMailbox") 
+                    (ShowFeeds, Button 'n')  ->  [ ("<enter>","addUrl -> chooseMailbox")
                                                  , ("<esc>","abort")]
 
                     (ShowMailboxList, None)  ->  [ ("q","quit")
@@ -580,12 +579,12 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                                                  , ("e","editMailboxName")
                                                  , ("n","newMailbox") ]
 
-                    (ShowMailboxList, Button 'e')  
-                                             ->  [ ("<enter>","acceptChanges") 
+                    (ShowMailboxList, Button 'e')
+                                             ->  [ ("<enter>","acceptChanges")
                                                  , ("<esc>","abort")]
 
-                    (ShowMailboxList, Button 'n')  
-                                             ->  [ ("<enter>","createMailbox") 
+                    (ShowMailboxList, Button 'n')
+                                             ->  [ ("<enter>","createMailbox")
                                                  , ("<esc>","abort")]
 
                     (ChooseMailbox, _)       ->  [ ("<enter>","chooseMailbox")
