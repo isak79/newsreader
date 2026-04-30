@@ -413,6 +413,9 @@ changeShowDesc = do
 data Zipper a = Zipper [a] a [a]
   deriving (Show, Functor, Eq, Foldable)
 
+addBeforeCurrent :: a -> Zipper a -> Zipper a
+addBeforeCurrent a (Zipper as b cs) = Zipper (a:as) b cs
+
 -- copied from Data.List source code
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc   = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
@@ -485,23 +488,22 @@ drawEditor :: TuiState -> (TuiState -> Editor T.Text ResourceName) -> Widget Res
 drawEditor ts editor' = visible $ renderEditor (txt . T.unlines) True (editor' ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
-drawTui ts
-  | showHelp ts = [hCenter $ hLimitPercent 50 warn] <> [drawHelp ts, toDraw]
-  | otherwise   = [hCenter $ hLimitPercent 50 warn] <> [toDraw]
+drawTui ts = [vBox $ [warn | M.isJust $ warning ts] <> [toDraw]]
     where
       toDraw = case currentDisplay ts of
         ShowEntries     -> drawMailBox ts
         ShowMailboxList -> drawHome ts
         ShowFeeds       -> drawFeedList ts
         ChooseMailbox   -> drawHome ts
-      warn = maybe emptyWidget (withAttr warningAttr . txt) (warning ts)
+      warn = border $ hCenter $ hLimitPercent 50 $ withAttr warningAttr (txt $ fromJust $ warning ts)
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
-  $ vBox $ toList (fmap (drawFeedEntry ts $ getCurrent fl) fl)
+  $ vBox $ toList (addBeforeCurrent help $ fmap (drawFeedEntry ts $ getCurrent fl) fl)
     <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
     where
       fl = feedList ts
+      help = if showHelp ts then drawHelp ts else emptyWidget 
 
 drawFeedEntry :: TuiState -> (URL, T.Text) -> (URL, T.Text) -> Widget ResourceName
 drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a url, withAttr sourceAttr $ txt (snd fd)]
@@ -518,9 +520,10 @@ drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a u
 
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = viewport MailboxesViewport Vertical
-  $ vBox $ toList (fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
+  $ vBox $ toList (addBeforeCurrent help $ fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
     where
       mailboxes = mailBoxes ts
+      help = if showHelp ts then drawHelp ts else emptyWidget 
 
 drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
 drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbName
@@ -537,10 +540,12 @@ drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbNam
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport EntriesViewport Vertical
-  $ vBox $ toList $ fmap (drawEntry (showDesc ts) currEnt) ents
+  $ vBox $ toList $ addBeforeCurrent help $ fmap (drawEntry (showDesc ts) currEnt) ents
   where
     ents      = snd $ getCurrent $ mailBoxes ts
     currEnt   = getCurrent ents
+    help = if showHelp ts then drawHelp ts else emptyWidget 
+
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
 drawEntry showDesc currEnt ent =
@@ -614,6 +619,9 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
 
                     (ShowFeeds, Button 'n')  ->  [ ("<enter>","addUrl -> chooseMailbox")
                                                  , ("<esc>","abort")]
+                    (ShowFeeds, Button 'D')
+                                             -> [ ("Y","confirm")
+                                                , ("_","abort") ]
 
                     (ShowMailboxList, None)  ->  [ ("q","quit")
                                                  , ("j/<down>", "nextFeed")
@@ -634,6 +642,10 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                     (ShowMailboxList, Button 'n')
                                              ->  [ ("<enter>","createMailbox")
                                                  , ("<esc>","abort")]
+
+                    (ShowMailboxList, Button 'D')
+                                             -> [ ("Y","confirm")
+                                                , ("_","abort") ]
 
                     (ChooseMailbox, _)       ->  [ ("<enter>","chooseMailbox")
                                                  , ("<esc>","abortOperation") ]
