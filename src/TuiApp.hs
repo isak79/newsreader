@@ -265,20 +265,21 @@ activateItem = do
         feed <- liftIO safeFeeds 
         modify $ setFeedList $ M.fromJust $ fromList feed
      ShowFeeds -> pure ()
-     _    -> openSelectedUrl
+     ShowEntries    -> do
+        mailBoxes   <- gets mailBoxes
+        let currEntry = getCurrent $ snd $ getCurrent mailBoxes
+        case currEntry of
+          fallbackEntry -> pure ()
+          _             -> do
+            markEntry True
+            liftIO $ openUrl $ T.unpack $ source currEntry
+            pure ()
 
 -- | Update the states display element
 setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
 setCurrentDisplay cd ts = ts { currentDisplay = cd }
 
 -- | Open the current enties URL
-openSelectedUrl :: EventM ResourceName TuiState ()
-openSelectedUrl = do
-  mailBoxes   <- gets mailBoxes
-  let currEntry = getCurrent $ snd $ getCurrent mailBoxes
-  markEntry True
-  liftIO $ openUrl $ T.unpack $ source currEntry
-  pure ()
 
 -- | Update the read element of an entry to be either True or False
 markEntry b = do
