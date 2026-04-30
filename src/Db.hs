@@ -1,6 +1,6 @@
 {-# LANGUAGE DeriveGeneric, OverloadedStrings, OverloadedLabels #-}
 
-module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl, updateMailboxName, moveFeed, deleteFeed) where
+module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, addFeedToMailbox, initializeTables, insertMailbox, updateFeedUrl, updateMailboxName, moveFeed, deleteFeed, deleteMailbox) where
 
 import Database.Selda
 import Database.Selda.SQLite
@@ -33,6 +33,10 @@ deleteFeed feedUrl = withSQLite "newsreader.db" $ do
     pure (feed ! #fID)
   deleteFrom_ dbFeeds (\r -> r ! #fID .== literal (head feedID))
   deleteFrom_ dbEntries (\r -> r ! #feedID .== literal (head feedID))
+
+deleteMailbox :: (MonadMask m, MonadIO m) => Text -> m ()
+deleteMailbox mbName = withSQLite "newsreader.db" $ do
+  deleteFrom_ dbMailboxes (\r -> r ! #name .== literal mbName)
 
 toDbEntry  ::  ID DbFeeds -> Entry -> DbEntry
 toDbEntry feedid ent = DbEntry {

@@ -35,7 +35,7 @@ runApp = do
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
                                                               , (sourceAttr, fg V.yellow)
-                                                              , (borderAttr, fg V.white) 
+                                                              , (borderAttr, fg V.white)
                                                               , (warningAttr, fg V.red) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
@@ -47,6 +47,10 @@ runApp = do
 -- | The app event handler
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent ev = do
+  ts' <- get
+  if warning ts' /= Nothing
+    then modify (\s -> s { warning = Nothing })
+    else pure ()
   ts <- get
   case (currentDisplay ts,buttonPressed ts) of
     (ShowFeeds, Button 'n')       -> addFeed ev
@@ -63,10 +67,19 @@ handleDelete ev = do
     (ShowFeeds, VtyEvent (V.EvKey (V.KChar 'Y') [])) -> do
       deleteFeed $ fst $ getCurrent $ feedList ts
       modify $ setButtonPressed None
-      feeds <- liftIO safeFeeds 
-      mb    <- liftIO fillMailboxes 
+      feeds <- liftIO safeFeeds
+      mb    <- liftIO fillMailboxes
       modify $ setFeedList $ M.fromJust $ fromList feeds
       modify $ setMailBoxes mb
+    (ShowMailboxList, VtyEvent (V.EvKey (V.KChar 'Y') [])) -> do
+      let curMbName = fst $ getCurrent $ mailBoxes ts
+      modify $ setButtonPressed None
+      if Prelude.any (\feed -> (snd feed) == T.pack curMbName) (feedList ts)
+        then modify  (\s -> s { warning = Just (T.pack "Can not delete mailbox that subscribes to feeds") })
+        else do
+          deleteMailbox $ T.pack curMbName
+          refillMailboxes
+      pure ()
     _                                              -> modify $ setButtonPressed None
 
 renameMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
@@ -187,8 +200,8 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
 handleNormal (VtyEvent (V.EvKey (V.KChar 'D') [])) = do
   ts <- get
   case currentDisplay ts of
-    ShowFeeds -> do
-      modify $ setButtonPressed (Button 'D')
+    ShowFeeds       -> modify $ setButtonPressed (Button 'D')
+    ShowMailboxList -> modify $ setButtonPressed (Button 'D')
     _         -> pure ()
 handleNormal _ = pure ()
 
@@ -352,6 +365,7 @@ buildState = do
   mailboxes <- fillMailboxes
   feeds     <- safeFeeds
   pure TuiState { currentDisplay   = ShowMailboxList
+                , warning          = Nothing
                 , showDesc         = False
                 , showHelp         = False
                 , mailBoxes        = mailboxes
@@ -397,7 +411,7 @@ changeShowDesc = do
 
 -- | The datastructure that handles the displayed entries/mailboxes, and the logic of scrolling through them
 data Zipper a = Zipper [a] a [a]
-  deriving (Show, Functor, Eq)
+  deriving (Show, Functor, Eq, Foldable)
 
 -- copied from Data.List source code
 unsnoc :: [a] -> Maybe ([a], a)
@@ -456,6 +470,7 @@ data TuiState = TuiState { currentDisplay   :: CurrentDisplay
                          , showDesc         :: Bool
                          , showHelp         :: Bool
                          , mailBoxes        :: MailBoxes
+                         , warning          :: Maybe T.Text
                          , buttonPressed    :: ButtonPressed Char
                          , addFeedEditor    :: Editor T.Text ResourceName
                          , addMailboxEditor :: Editor T.Text ResourceName
@@ -471,14 +486,15 @@ drawEditor ts editor' = visible $ renderEditor (txt . T.unlines) True (editor' t
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts
-  | showHelp ts = [drawHelp ts, toDraw]
-  | otherwise   = [toDraw]
+  | showHelp ts = [hCenter $ hLimitPercent 50 warn] <> [drawHelp ts, toDraw]
+  | otherwise   = [hCenter $ hLimitPercent 50 warn] <> [toDraw]
     where
       toDraw = case currentDisplay ts of
         ShowEntries     -> drawMailBox ts
         ShowMailboxList -> drawHome ts
         ShowFeeds       -> drawFeedList ts
         ChooseMailbox   -> drawHome ts
+      warn = maybe emptyWidget (withAttr warningAttr . txt) (warning ts)
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
@@ -512,7 +528,10 @@ drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbNam
     isCurrent = mb == curMb
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
-    mbName = if isCurrent && (buttonPressed ts == Button 'e') then drawEditor ts addMailboxEditor else txt $ T.pack $ fst mb
+    mbName
+      | isCurrent && (buttonPressed ts == Button 'e') = drawEditor ts addMailboxEditor
+      | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Are you sure you want to delete this mailbox? This action can not be undone. Press 'Y' to confirm"
+      | otherwise = txt $ T.pack $ fst mb
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
 
@@ -581,6 +600,7 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                                                  , ("j/<down>", "nextFeed")
                                                  , ("k/<up>","prevFeed")
                                                  , ("m","moveTo...")
+                                                 , ("D","deleteCurrentFeed")
                                                  , ("r","refreshAll")
                                                  , ("g","goToTop")
                                                  , ("G","goToBottom")
@@ -599,6 +619,7 @@ drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
                                                  , ("j/<down>", "nextFeed")
                                                  , ("k/<up>","prevFeed")
                                                  , ("<enter>","goToMailbox")
+                                                 , ("D","deleteMailbox")
                                                  , ("r","refreshAll")
                                                  , ("g","goToTop")
                                                  , ("G","goToBottom")
