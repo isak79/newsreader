@@ -106,6 +106,7 @@ addMailbox ev = case ev of
     modify $ setMailBoxes (add (T.unpack name,Zipper [] fallbackEntry []) mb)
     insertMailbox name
     modify $ setButtonPressed None
+    modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
   _                              -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
@@ -445,7 +446,7 @@ setMailBoxes :: MailBoxes -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
 drawEditor :: TuiState -> (TuiState -> Editor T.Text ResourceName) -> Widget ResourceName
-drawEditor ts editor' = renderEditor (txt . T.unlines) True (editor' ts)
+drawEditor ts editor' = visible $ renderEditor (txt . T.unlines) True (editor' ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts
