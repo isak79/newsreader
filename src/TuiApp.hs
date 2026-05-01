@@ -501,9 +501,9 @@ drawTui ts = [toDraw]
     where
       toDraw = case currentDisplay ts of
         ShowEntries     -> drawMailBox ts
-        ShowMailboxList -> drawHome ts
+        ShowMailboxList -> drawMailboxesList ts
         ShowFeeds       -> drawFeedList ts
-        ChooseMailbox   -> drawHome ts
+        ChooseMailbox   -> drawMailboxesList ts
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
@@ -530,8 +530,8 @@ drawFeedEntry ts curFd fd = toView $ b $ border $ padRight Max $  vBox [withAttr
 
 
 
-drawHome :: TuiState -> Widget ResourceName
-drawHome ts = viewport MailboxesViewport Vertical
+drawMailboxesList :: TuiState -> Widget ResourceName
+drawMailboxesList ts = viewport MailboxesViewport Vertical
   $ vBox $ toList (addBeforeCurrent (warn ts) $ addBeforeCurrent help $ fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
     where
       mailboxes = mailBoxes ts
