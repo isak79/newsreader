@@ -97,6 +97,7 @@ renameMailbox ev = case ev of
     modify $ setButtonPressed None
     modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
     modify $ setMailBoxes newMbs
+    modify $ setFeedList ((\(u,t) -> if t == T.pack oldName then (u,mbName) else (u,t)) <$> feedList ts)
     liftIO $ updateMailboxName (T.pack oldName) mbName
   _      -> zoom editorStateL (handleEditorEvent ev)
   where
@@ -416,6 +417,9 @@ data Zipper a = Zipper [a] a [a]
 addBeforeCurrent :: a -> Zipper a -> Zipper a
 addBeforeCurrent a (Zipper as b cs) = Zipper (a:as) b cs
 
+updateElem :: (a -> Bool) -> a -> Zipper a -> Zipper a
+updateElem f element = fmap (\a -> if f a then element else a)
+
 -- copied from Data.List source code
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc   = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
@@ -503,7 +507,7 @@ drawFeedList ts = viewport FeedsViewport Vertical
     <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
     where
       fl = feedList ts
-      help = if showHelp ts then drawHelp ts else emptyWidget 
+      help = if showHelp ts then drawHelp ts else emptyWidget
 
 drawFeedEntry :: TuiState -> (URL, T.Text) -> (URL, T.Text) -> Widget ResourceName
 drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a url, withAttr sourceAttr $ txt (snd fd)]
@@ -523,7 +527,7 @@ drawHome ts = viewport MailboxesViewport Vertical
   $ vBox $ toList (addBeforeCurrent help $ fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
     where
       mailboxes = mailBoxes ts
-      help = if showHelp ts then drawHelp ts else emptyWidget 
+      help = if showHelp ts then drawHelp ts else emptyWidget
 
 drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
 drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbName
@@ -544,7 +548,7 @@ drawMailBox ts = viewport EntriesViewport Vertical
   where
     ents      = snd $ getCurrent $ mailBoxes ts
     currEnt   = getCurrent ents
-    help = if showHelp ts then drawHelp ts else emptyWidget 
+    help = if showHelp ts then drawHelp ts else emptyWidget
 
 
 drawEntry :: Bool -> Entry -> Entry -> Widget n
