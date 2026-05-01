@@ -42,6 +42,7 @@ executable newsreader
 										, http-client
 										, selda
 										, selda-sqlite
+										, readability
 
     -- Directories containing source files.
     hs-source-dirs:   app
