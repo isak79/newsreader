@@ -23,7 +23,7 @@ instance SqlRow DbEntry
 
 dbEntries :: Table DbEntry
 dbEntries = table "entries" [ #eID   :- autoPrimary
-                            , #dedup :- unique]
+                            , #dedup :- unique ]
 
 deleteFeed :: (MonadIO m, MonadMask m) => Text -> m ()
 deleteFeed feedUrl = withSQLite "newsreader.db" $ do
@@ -123,14 +123,6 @@ addFeedToMailbox url mailboxName = withSQLite "newsreader.db" $ do
     []    -> insertWithPK dbMailboxes [DbMailbox def mailboxName]
   insert_ dbFeeds [DbFeeds def mailboxID url]
 
-
-countUnread :: (MonadMask m, MonadIO m) => m Int
-countUnread = withSQLite "newsreader.db" $ do
-  unread <- query $ do
-    entries <- select dbEntries 
-    restrict (entries ! #dbIsRead .== false)
-    pure entries
-  pure $ length unread
 
 refreshAll :: IO ()
 refreshAll = withSQLite "newsreader.db" $ do
