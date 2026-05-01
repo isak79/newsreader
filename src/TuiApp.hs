@@ -420,6 +420,9 @@ addBeforeCurrent a (Zipper as b cs) = Zipper (a:as) b cs
 updateElem :: (a -> Bool) -> a -> Zipper a -> Zipper a
 updateElem f element = fmap (\a -> if f a then element else a)
 
+countMatching :: (a -> Bool) -> Zipper a -> Int
+countMatching func (Zipper as b cs) = length $ filter func $ as <> [b] <> cs
+
 -- copied from Data.List source code
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc   = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
@@ -530,7 +533,7 @@ drawHome ts = viewport MailboxesViewport Vertical
       help = if showHelp ts then drawHelp ts else emptyWidget
 
 drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
-drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbName
+drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ vBox [withAttr a mbName, unread]
   where
     isCurrent = mb == curMb
     a :: AttrName
@@ -541,6 +544,7 @@ drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ withAttr a mbNam
       | otherwise = txt $ T.pack $ fst mb
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
+    unread = if isCurrent && showDesc ts then str $ show $ countMatching (not . isRead) $ snd $ getCurrent $ mailBoxes ts else emptyWidget
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport EntriesViewport Vertical

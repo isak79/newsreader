@@ -41,7 +41,7 @@ fallbackEntry = Entry { title = T.pack "Nothing to show"
                       , source = T.pack "No url"
                       , pubTime = Nothing
                       , description = Nothing
-                      , isRead = False }
+                      , isRead = True }
 
 entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
