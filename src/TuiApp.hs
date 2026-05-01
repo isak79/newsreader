@@ -19,13 +19,14 @@ import Lens.Micro
 import Data.Maybe (fromJust)
 
 
-blueAttr, greenAttr, sourceAttr, timeAttr, readAttr, warningAttr :: AttrName
+blueAttr, greenAttr, yellowAttr, timeAttr, readAttr, warningAttr, defaultAttr :: AttrName
 readAttr = attrName "readBorder"
 blueAttr = attrName "title"
 greenAttr = attrName "selectedTitle"
-sourceAttr = attrName "source"
+yellowAttr = attrName "yellow"
 timeAttr = attrName "time"
 warningAttr = attrName "warningAttr"
+defaultAttr = attrName "default"
 
 -- | The main function that ties the whole program together
 runApp :: IO ()
@@ -34,9 +35,9 @@ runApp = do
   tuiState <- buildState
   let app = App { appAttrMap      = const $ attrMap V.defAttr [ (blueAttr, fg V.blue)
                                                               , (greenAttr, fg V.green)
-                                                              , (sourceAttr, fg V.yellow)
-                                                              , (borderAttr, fg V.white)
-                                                              , (warningAttr, fg V.red) ]
+                                                              , (yellowAttr, fg V.yellow)
+                                                              , (warningAttr, fg V.red)
+                                                              , (defaultAttr, fg V.white) ]
                 , appStartEvent   = return ()
                 , appHandleEvent  = handleTuiEvent
                 , appChooseCursor = neverShowCursor
@@ -222,6 +223,7 @@ refillMailboxes = do
   liftIO refreshAll
   mb <- liftIO fillMailboxes
   modify $ setMailBoxes mb
+  modify $ setCurrentDisplay ShowMailboxList
 
 -- | Helper function for what happens when user presses 'U', mainly for marking current entry as unread
 pressU :: EventM ResourceName TuiState ()
@@ -495,56 +497,67 @@ drawEditor :: TuiState -> (TuiState -> Editor T.Text ResourceName) -> Widget Res
 drawEditor ts editor' = visible $ renderEditor (txt . T.unlines) True (editor' ts)
 
 drawTui :: TuiState -> [Widget ResourceName]
-drawTui ts = [vBox $ [warn | M.isJust $ warning ts] <> [toDraw]]
+drawTui ts = [toDraw]
     where
       toDraw = case currentDisplay ts of
         ShowEntries     -> drawMailBox ts
         ShowMailboxList -> drawHome ts
         ShowFeeds       -> drawFeedList ts
         ChooseMailbox   -> drawHome ts
-      warn = border $ hCenter $ hLimitPercent 50 $ withAttr warningAttr (txt $ fromJust $ warning ts)
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
-  $ vBox $ toList (addBeforeCurrent help $ fmap (drawFeedEntry ts $ getCurrent fl) fl)
+  $ vBox $ toList (addBeforeCurrent help $ addBeforeCurrent (warn ts) $ fmap (drawFeedEntry ts $ getCurrent fl) fl)
     <> [border $ drawEditor ts addFeedEditor | buttonPressed ts == Button 'n']
     where
       fl = feedList ts
       help = if showHelp ts then drawHelp ts else emptyWidget
 
 drawFeedEntry :: TuiState -> (URL, T.Text) -> (URL, T.Text) -> Widget ResourceName
-drawFeedEntry ts curFd fd = toView $ border $ padRight Max $  vBox [withAttr a url, withAttr sourceAttr $ txt (snd fd)]
+drawFeedEntry ts curFd fd = toView $ b $ border $ padRight Max $  vBox [withAttr a url, withAttr yellowAttr $ txt (snd fd)]
   where
-    isCurrent = fd == curFd
+    isCurrent = fd == curFd && (buttonPressed ts /= Button 'n')
     a :: AttrName
     a = if isCurrent then greenAttr else blueAttr
     url
-      | isCurrent && (buttonPressed ts == Button 'e') = drawEditor ts addFeedEditor
-      | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Are you sure you want to delete this feed? This action can not be undone. Press 'Y' to confirm"
+      | editMode = drawEditor ts addFeedEditor
+      | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Press 'Y' to confirm deletion"
       | otherwise = txt $ fst fd
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
+    editMode = isCurrent && (buttonPressed ts == Button 'e')
+    b = if editMode then overrideAttr borderAttr yellowAttr else overrideAttr borderAttr defaultAttr 
+
+
 
 drawHome :: TuiState -> Widget ResourceName
 drawHome ts = viewport MailboxesViewport Vertical
-  $ vBox $ toList (addBeforeCurrent help $ fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
+  $ vBox $ toList (addBeforeCurrent (warn ts) $ addBeforeCurrent help $ fmap (drawMailBoxEntry ts $ getCurrent mailboxes) mailboxes) <> [border $ drawEditor ts addMailboxEditor | buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList ]
     where
       mailboxes = mailBoxes ts
       help = if showHelp ts then drawHelp ts else emptyWidget
 
+
+warn :: TuiState -> Widget ResourceName
+warn ts = if M.isJust $ warning ts
+  then overrideAttr borderAttr warningAttr $ border $ hCenter $ hLimitPercent 50 $ withAttr warningAttr (txt $ fromJust $ warning ts) 
+  else emptyWidget 
+
 drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
-drawMailBoxEntry ts curMb mb = toView $ border $ padRight Max $ vBox [withAttr a mbName, unread]
+drawMailBoxEntry ts curMb mb = a $ toView $ border $ padRight Max $ vBox [withAttr markCurrent mbName, unread]
   where
     isCurrent = mb == curMb
-    a :: AttrName
-    a = if isCurrent then greenAttr else blueAttr
+    markCurrent :: AttrName
+    markCurrent = if (buttonPressed ts /= Button 'n') && isCurrent then greenAttr else blueAttr
     mbName
-      | isCurrent && (buttonPressed ts == Button 'e') = drawEditor ts addMailboxEditor
-      | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Are you sure you want to delete this mailbox? This action can not be undone. Press 'Y' to confirm"
+      | editMode = drawEditor ts addMailboxEditor
+      | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Press 'Y' to confirm deletion"
       | otherwise = txt $ T.pack $ fst mb
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
     unread = if isCurrent && showDesc ts then str $ show $ countMatching (not . isRead) $ snd $ getCurrent $ mailBoxes ts else emptyWidget
+    editMode = isCurrent && (buttonPressed ts == Button 'e')
+    a = if editMode then overrideAttr borderAttr yellowAttr else overrideAttr borderAttr defaultAttr 
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport EntriesViewport Vertical
@@ -564,7 +577,7 @@ drawEntry showDesc currEnt ent =
             , padLeft Max $ withAttr b $ drawTime (pubTime ent)
             ]
       , padRight (Pad 30) $ padTop (Pad 1) $ padBottom (Pad 1) desc
-      , drawField (source ent) (if not $ isRead ent then sourceAttr else readAttr)
+      , drawField (source ent) (if not $ isRead ent then yellowAttr else readAttr)
       ]
   where
     current = currEnt == ent
@@ -634,6 +647,7 @@ drawHelp ts = visible $ hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "
                     (ShowMailboxList, None)  ->  [ ("q","quit")
                                                  , ("j/<down>", "nextFeed")
                                                  , ("k/<up>","prevFeed")
+                                                 , ("d","toggleShowUnread")
                                                  , ("<enter>","goToMailbox")
                                                  , ("D","deleteMailbox")
                                                  , ("r","refreshAll")
