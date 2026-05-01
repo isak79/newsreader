@@ -42,6 +42,7 @@ executable newsreader
 										, http-client
 										, selda
 										, selda-sqlite
+										, xml-conduit
 										, readability
 
     -- Directories containing source files.
