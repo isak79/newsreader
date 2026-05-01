@@ -576,7 +576,7 @@ drawEntry showDesc currEnt ent =
       Just _  -> True
 
 drawHelp :: TuiState -> Widget n
-drawHelp ts =  hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
+drawHelp ts = visible $ hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "help") $
               hBox
                 [ padRight Max $
                     vBox [hCenter $ str $ fst x | x <- buttonDesc],
