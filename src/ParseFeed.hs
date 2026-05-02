@@ -6,6 +6,7 @@ import qualified Data.Text as T
 import Data.Time (UTCTime)
 import Data.Maybe (mapMaybe)
 import FetchFeed
+import Control.Monad (join)
 
 type URL = T.Text
 
@@ -26,8 +27,8 @@ toEntry i = do
   title0      <- getItemTitle i
   source0     <- getItemLink i
   let description = getItemDescription i
-  pubTime     <- getItemPublishDate i
-  let title  = T.strip title0
+      pubTime     = join (getItemPublishDate i)
+      title  = T.strip title0
       source = cleanUrl source0
   pure Entry { title, source, pubTime, description, isRead = False }
 
