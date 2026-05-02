@@ -16,7 +16,6 @@ extra-doc-files:    CHANGELOG.md
 
 common warnings
     ghc-options: -Wall -threaded
-
 executable newsreader
     import:           warnings
 
@@ -26,6 +25,7 @@ executable newsreader
 										, TuiApp
 										, FetchFeed
 										, Db
+										, ParseNews
 
 
     build-depends:    base >=4.16 && <5

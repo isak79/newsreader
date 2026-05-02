@@ -1,5 +1,5 @@
 {-# LANGUAGE OverloadedStrings #-}
-module FetchFeed(fetchFeed) where
+module FetchFeed(fetchFeed, fetchBytes) where
 
 import Text.Feed.Import
 import Text.Feed.Types
