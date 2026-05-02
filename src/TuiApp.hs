@@ -204,8 +204,12 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
   case currentDisplay ts of
     ShowFeeds -> do
       let url = fst $ getCurrent $ feedList ts
-      modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) url })
-      modify $ setButtonPressed $ Button 'e'
+      if url == "No url" 
+        then 
+          modify (\s -> s {warning = Just "Add a feed first!"}) 
+        else do
+          modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) url })
+          modify $ setButtonPressed $ Button 'e'
     ShowMailboxList -> do
       let mbName = fst $ getCurrent $ mailBoxes ts
       modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) mbName })
@@ -372,7 +376,7 @@ setFeedList f ts = ts { feedList = f }
 safeFeeds :: IO [(T.Text, T.Text)]
 safeFeeds = do
   feeds <- getFeeds
-  let safe = if null feeds then [(T.pack "No url", T.pack "No feed")] else feeds
+  let safe = if null feeds then [("No url", "No feed")] else feeds
   pure safe
 
 -- | Build the initial TUI state
