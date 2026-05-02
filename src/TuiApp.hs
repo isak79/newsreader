@@ -147,10 +147,10 @@ addMailbox ev = case ev of
     ts <- get
     let name = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
     mb <- gets mailBoxes
-    if getCurrent (mailBoxes ts) == ("No mailbox", Zipper [] fallbackEntry []) 
+    if getCurrent (mailBoxes ts) == ("No mailbox", Zipper [] fallbackEntry [])
       then
         modify $ setMailBoxes (Zipper [] (name,Zipper [] fallbackEntry []) [])
-      else 
+      else
         modify $ setMailBoxes (add (name,Zipper [] fallbackEntry []) mb)
     insertMailbox name
     modify $ setButtonPressed None
@@ -294,6 +294,7 @@ switchItem switchTo = do
     ShowMailboxList -> zoom mailBoxesL $ modify func
     ChooseMailbox   -> zoom mailBoxesL $ modify func
     ShowFeeds       -> zoom feedsL $ modify func
+    _               -> pure ()
     where
       func = case switchTo of
         Next   -> nextItem
@@ -334,8 +335,11 @@ activateItem = do
         let currEntry = getCurrent $ snd $ getCurrent mailBoxes
         if currEntry /= fallbackEntry then do
           markEntry True
-          liftIO $ openUrl $ T.unpack $ source currEntry
+          case article currEntry of
+            Just _  -> modify $ setCurrentDisplay ShowArticle
+            Nothing -> liftIO $ openUrl $ T.unpack $ source currEntry
         else pure ()
+     ShowArticle -> pure ()
 
 -- | Update the states display element
 setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
@@ -494,10 +498,11 @@ add a (Zipper as b cs) = Zipper as b (cs <> [a])
 
 
 type MailboxName = T.Text
+type Article     = T.Text
 type Mailbox     = Zipper Entry
 type MailBoxes   = Zipper (MailboxName, Mailbox)
 
-data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox
+data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox | ShowArticle
   deriving Eq
 
 data ButtonPressed x = Button x | None
@@ -512,7 +517,7 @@ data TuiState = TuiState { currentDisplay   :: CurrentDisplay
                          , addFeedEditor    :: Editor T.Text ResourceName
                          , addMailboxEditor :: Editor T.Text ResourceName
                          , newFeedUrl       :: Maybe URL
-                         , feedList         :: Zipper (URL, T.Text) }
+                         , feedList         :: Zipper (URL, MailboxName) }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
@@ -529,6 +534,17 @@ drawTui ts = [toDraw]
         ShowMailboxList -> drawMailboxesList ts
         ShowFeeds       -> drawFeedList ts
         ChooseMailbox   -> drawMailboxesList ts
+        ShowArticle     -> drawArticle ts
+
+
+
+drawArticle :: TuiState -> Widget n
+drawArticle ts =
+  let currEntry = getCurrent $ snd $ getCurrent $ mailBoxes ts
+      art = M.fromMaybe "" (article currEntry)
+  in txt art
+
+
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
