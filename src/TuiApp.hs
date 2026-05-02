@@ -1,3 +1,5 @@
+{-# LANGUAGE OverloadedStrings #-}
+
 module TuiApp(runApp) where
 
 import ParseFeed (Entry(..), fallbackEntry)
@@ -75,10 +77,10 @@ handleDelete ev = do
     (ShowMailboxList, VtyEvent (V.EvKey (V.KChar 'Y') [])) -> do
       let curMbName = fst $ getCurrent $ mailBoxes ts
       modify $ setButtonPressed None
-      if Prelude.any (\feed -> (snd feed) == T.pack curMbName) (feedList ts)
-        then modify  (\s -> s { warning = Just (T.pack "Can not delete mailbox that subscribes to feeds") })
+      if Prelude.any (\feed -> (snd feed) == curMbName) (feedList ts)
+        then modify  (\s -> s { warning = Just "Can not delete mailbox that subscribes to feeds" })
         else do
-          deleteMailbox $ T.pack curMbName
+          deleteMailbox curMbName
           refillMailboxes
       pure ()
     _                                              -> modify $ setButtonPressed None
@@ -93,13 +95,13 @@ renameMailbox ev = case ev of
     let mbName      = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
         mbs         = mailBoxes ts
         oldName      = fst $ getCurrent mbs
-        newMbs = updateCurrentItem (T.unpack mbName, snd $ getCurrent mbs) mbs
+        newMbs = updateCurrentItem (mbName, snd $ getCurrent mbs) mbs
     modify $ setMailBoxes newMbs
     modify $ setButtonPressed None
     modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
     modify $ setMailBoxes newMbs
-    modify $ setFeedList ((\(u,t) -> if t == T.pack oldName then (u,mbName) else (u,t)) <$> feedList ts)
-    liftIO $ updateMailboxName (T.pack oldName) mbName
+    modify $ setFeedList ((\(u,t) -> if t == oldName then (u,mbName) else (u,t)) <$> feedList ts)
+    liftIO $ updateMailboxName (oldName) mbName
   _      -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
@@ -133,7 +135,7 @@ addMailbox ev = case ev of
     ts <- get
     let name = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
     mb <- gets mailBoxes
-    modify $ setMailBoxes (add (T.unpack name,Zipper [] fallbackEntry []) mb)
+    modify $ setMailBoxes (add (name,Zipper [] fallbackEntry []) mb)
     insertMailbox name
     modify $ setButtonPressed None
     modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
@@ -195,7 +197,7 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
       modify $ setButtonPressed $ Button 'e'
     ShowMailboxList -> do
       let mbName = fst $ getCurrent $ mailBoxes ts
-      modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack mbName })
+      modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) mbName })
       modify $ setButtonPressed $ Button 'e'
       pure ()
     _         -> pure ()
@@ -294,8 +296,8 @@ activateItem = do
         let currMb = getCurrent mb
         url <- gets newFeedUrl
         case bp of
-          Button 'n' -> addFeedToMailbox (M.fromJust url) $ T.pack $ fst currMb
-          Button 'm' -> moveFeed (M.fromJust url) $ T.pack $ fst currMb
+          Button 'n' -> addFeedToMailbox (M.fromJust url) $ fst currMb
+          Button 'm' -> moveFeed (M.fromJust url) $ fst currMb
           _          -> pure ()
         modify $ setCurrentDisplay ShowFeeds
         modify $ setNewFeedUrl Nothing
@@ -384,7 +386,7 @@ fillMailboxes = do
   mbs <- fetchMailboxes
   mailboxes0 <- if null mbs
       then do
-        insertMailbox $ T.pack "Default mailbox"
+        insertMailbox "Default mailbox"
         pure [("Default mailbox", Zipper [] fallbackEntry [])]
       else traverse mkMailbox mbs
   let mailboxes = M.fromJust $ fromList mailboxes0
@@ -393,7 +395,7 @@ fillMailboxes = do
         mkMailbox mbName = do
           e <- fetchEntries mbName
           let mb = maybe (Zipper [] fallbackEntry []) id (fromList $ entrySort e)
-          pure (T.unpack mbName, mb)
+          pure (mbName, mb)
         entrySort = L.sortOn (D.Down . M.maybe epoch id . pubTime)
         epoch = UTCTime (fromGregorian 1 1 1970) (secondsToDiffTime 1)
 
@@ -468,7 +470,7 @@ add :: a -> Zipper a -> Zipper a
 add a (Zipper as b cs) = Zipper as b (cs <> [a])
 
 
-type MailboxName = String
+type MailboxName = T.Text
 type Mailbox     = Zipper Entry
 type MailBoxes   = Zipper (MailboxName, Mailbox)
 
@@ -543,7 +545,7 @@ warn ts = if M.isJust $ warning ts
   then overrideAttr borderAttr warningAttr $ border $ hCenter $ hLimitPercent 50 $ withAttr warningAttr (txt $ fromJust $ warning ts) 
   else emptyWidget 
 
-drawMailBoxEntry :: Eq b => TuiState -> (String, b) -> (String, b) -> Widget ResourceName
+drawMailBoxEntry :: Eq b => TuiState -> (T.Text, b) -> (T.Text, b) -> Widget ResourceName
 drawMailBoxEntry ts curMb mb = a $ toView $ border $ padRight Max $ vBox [withAttr markCurrent mbName, unread]
   where
     isCurrent = mb == curMb
@@ -552,7 +554,7 @@ drawMailBoxEntry ts curMb mb = a $ toView $ border $ padRight Max $ vBox [withAt
     mbName
       | editMode = drawEditor ts addMailboxEditor
       | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Press 'Y' to confirm deletion"
-      | otherwise = txt $ T.pack $ fst mb
+      | otherwise = txt $ fst mb
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
     unread = if isCurrent && showDesc ts then str $ show $ countMatching (not . isRead) $ snd $ getCurrent $ mailBoxes ts else emptyWidget
