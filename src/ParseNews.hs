@@ -1,18 +1,17 @@
 {-# LANGUAGE OverloadedStrings #-}
-module ParseNews where
+module ParseNews(handleNews) where
 
 import qualified Readability as R
 import qualified Text.XML as X
 import qualified Text.XML.Cursor as C
 import FetchFeed
 import Data.Maybe
-import Control.Monad.IO.Class (liftIO)
 import qualified Data.Text as T
-import qualified Data.Text.IO as TIO
 import Data.List (nub)
 
-handleNews = do
-  bytes <- fetchBytes "https://www.nrk.no/vestland/tilfluktsrom-i-noreg_-vesentlege-manglar-og-manglande-nasjonal-oversikt-1.17862823"
+handleNews :: T.Text -> IO T.Text
+handleNews url = do
+  bytes <- fetchBytes url
   let art = (fromJust . R.fromByteString) bytes
       doc = R.summary art
       cursor = C.fromDocument doc
@@ -26,5 +25,5 @@ handleNews = do
       wantedTags = ["h1","h2","h3","p","li"]
       cleanContent = map T.strip . map T.unlines . map (filter (not . T.null))
       filteredContent = T.unlines $ nub $ cleanContent $ map snd $ filter (\(t,_) -> t `elem` wantedTags) tagCont 
-  TIO.putStrLn filteredContent 
+  pure filteredContent 
 

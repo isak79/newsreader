@@ -19,6 +19,7 @@ import Db
 import qualified Data.List as L
 import Lens.Micro
 import Data.Maybe (fromJust)
+import ParseNews
 
 
 blueAttr, greenAttr, yellowAttr, timeAttr, readAttr, warningAttr, defaultAttr :: AttrName
