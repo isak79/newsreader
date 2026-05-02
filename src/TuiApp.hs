@@ -23,11 +23,11 @@ import ParseNews
 
 
 blueAttr, greenAttr, yellowAttr, timeAttr, readAttr, warningAttr, defaultAttr :: AttrName
-readAttr = attrName "readBorder"
-blueAttr = attrName "title"
-greenAttr = attrName "selectedTitle"
-yellowAttr = attrName "yellow"
-timeAttr = attrName "time"
+readAttr    = attrName "readBorder"
+blueAttr    = attrName "title"
+greenAttr   = attrName "selectedTitle"
+yellowAttr  = attrName "yellow"
+timeAttr    = attrName "time"
 warningAttr = attrName "warningAttr"
 defaultAttr = attrName "default"
 

@@ -5,6 +5,8 @@ module Db(fetchEntries, fetchMailboxes, refreshAll, readEntry, getFeeds, URL, ad
 import Database.Selda
 import Database.Selda.SQLite
 import ParseFeed (parseFeed, Entry(..), parseFeed)
+import ParseNews
+
 type URL         = Text
 
 data DbEntry = DbEntry 
@@ -17,6 +19,7 @@ data DbEntry = DbEntry
   , dedup         :: Text
   , dbIsRead      :: Bool
   , feedID        :: ID DbFeeds
+  , dbArticle     :: Maybe Text
   } deriving (Show, Eq, Generic)
 
 instance SqlRow DbEntry
@@ -48,6 +51,7 @@ toDbEntry feedid ent = DbEntry {
   , dedup         = dedupString
   , dbIsRead      = isRead ent
   , feedID        = feedid
+  , dbArticle     = article ent
   }
   where 
     title'  = title ent
@@ -61,6 +65,7 @@ fromDbEntry dbEnt = Entry {
   , pubTime     = dbPubTime dbEnt
   , description = dbDescription dbEnt
   , isRead      = dbIsRead dbEnt
+  , article     = dbArticle dbEnt 
   }
 
 

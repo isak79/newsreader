@@ -7,6 +7,7 @@ import Data.Time (UTCTime)
 import Data.Maybe (mapMaybe)
 import FetchFeed
 import Control.Monad (join)
+import Data.Text (Text)
 
 type URL = T.Text
 
@@ -14,7 +15,8 @@ data Entry = Entry {  title       :: T.Text
                     , source      :: T.Text
                     , pubTime     :: Maybe UTCTime
                     , description :: Maybe T.Text 
-                    , isRead      :: Bool }
+                    , isRead      :: Bool
+                    , article     :: Maybe Text }
                     deriving (Show, Eq)
 
 parseFeed :: URL -> IO [Entry]
@@ -30,7 +32,7 @@ toEntry i = do
       pubTime     = join (getItemPublishDate i)
       title  = T.strip title0
       source = cleanUrl source0
-  pure Entry { title, source, pubTime, description, isRead = False }
+  pure Entry { title, source, pubTime, description, isRead = False, article = Nothing }
 
 cleanUrl :: T.Text -> T.Text
 cleanUrl t = case T.words t of
@@ -42,7 +44,8 @@ fallbackEntry = Entry { title = T.pack "Nothing to show"
                       , source = T.pack "No url"
                       , pubTime = Nothing
                       , description = Nothing
-                      , isRead = True }
+                      , isRead = True 
+                      , article = Nothing }
 
 entries :: Applicative f => Maybe Feed -> f [Entry]
 entries feed = do
