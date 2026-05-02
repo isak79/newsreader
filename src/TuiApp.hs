@@ -146,7 +146,11 @@ addMailbox ev = case ev of
     ts <- get
     let name = T.strip . T.unlines . getEditContents $ addMailboxEditor ts
     mb <- gets mailBoxes
-    modify $ setMailBoxes (add (name,Zipper [] fallbackEntry []) mb)
+    if getCurrent (mailBoxes ts) == ("No mailbox", Zipper [] fallbackEntry []) 
+      then
+        modify $ setMailBoxes (Zipper [] (name,Zipper [] fallbackEntry []) [])
+      else 
+        modify $ setMailBoxes (add (name,Zipper [] fallbackEntry []) mb)
     insertMailbox name
     modify $ setButtonPressed None
     modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
@@ -204,17 +208,21 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
   case currentDisplay ts of
     ShowFeeds -> do
       let url = fst $ getCurrent $ feedList ts
-      if url == "No url" 
-        then 
-          modify (\s -> s {warning = Just "Add a feed first!"}) 
+      if url == "No url"
+        then
+          modify (\s -> s {warning = Just "Add a feed first!"})
         else do
           modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) url })
           modify $ setButtonPressed $ Button 'e'
     ShowMailboxList -> do
-      let mbName = fst $ getCurrent $ mailBoxes ts
-      modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) mbName })
-      modify $ setButtonPressed $ Button 'e'
-      pure ()
+      if getCurrent (mailBoxes ts) == ("No mailbox", Zipper [] fallbackEntry [])
+        then
+          modify (\s -> s {warning = Just "Add a mailbox first!"})
+        else do
+          let mbName = fst $ getCurrent $ mailBoxes ts
+          modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) mbName })
+          modify $ setButtonPressed $ Button 'e'
+          pure ()
     _         -> pure ()
 handleNormal (VtyEvent (V.EvKey (V.KChar 'D') [])) = do
   ts <- get
@@ -401,8 +409,7 @@ fillMailboxes = do
   mbs <- fetchMailboxes
   mailboxes0 <- if null mbs
       then do
-        insertMailbox "Default mailbox"
-        pure [("Default mailbox", Zipper [] fallbackEntry [])]
+        pure [("No mailbox", Zipper [] fallbackEntry [])]
       else traverse mkMailbox mbs
   let mailboxes = M.fromJust $ fromList mailboxes0
   pure mailboxes
@@ -543,7 +550,7 @@ drawFeedEntry ts curFd fd = toView $ b $ border $ padRight Max $  vBox [withAttr
     toView :: Widget n -> Widget n
     toView = if isCurrent then visible else id
     editMode = isCurrent && (buttonPressed ts == Button 'e')
-    b = if editMode then overrideAttr borderAttr yellowAttr else overrideAttr borderAttr defaultAttr 
+    b = if editMode then overrideAttr borderAttr yellowAttr else overrideAttr borderAttr defaultAttr
 
 
 
@@ -557,8 +564,8 @@ drawMailboxesList ts = viewport MailboxesViewport Vertical
 
 warn :: TuiState -> Widget ResourceName
 warn ts = if M.isJust $ warning ts
-  then overrideAttr borderAttr warningAttr $ border $ hCenter $ hLimitPercent 50 $ withAttr warningAttr (txt $ fromJust $ warning ts) 
-  else emptyWidget 
+  then overrideAttr borderAttr warningAttr $ border $ hCenter $ hLimitPercent 50 $ withAttr warningAttr (txt $ fromJust $ warning ts)
+  else emptyWidget
 
 drawMailBoxEntry :: Eq b => TuiState -> (T.Text, b) -> (T.Text, b) -> Widget ResourceName
 drawMailBoxEntry ts curMb mb = a $ toView $ border $ padRight Max $ vBox [withAttr markCurrent mbName, unread]
@@ -574,7 +581,7 @@ drawMailBoxEntry ts curMb mb = a $ toView $ border $ padRight Max $ vBox [withAt
     toView = if isCurrent then visible else id
     unread = if isCurrent && showDesc ts then str $ show $ countMatching (not . isRead) $ snd $ getCurrent $ mailBoxes ts else emptyWidget
     editMode = isCurrent && (buttonPressed ts == Button 'e')
-    a = if editMode then overrideAttr borderAttr yellowAttr else overrideAttr borderAttr defaultAttr 
+    a = if editMode then overrideAttr borderAttr yellowAttr else overrideAttr borderAttr defaultAttr
 
 drawMailBox :: TuiState -> Widget ResourceName
 drawMailBox ts = viewport EntriesViewport Vertical
