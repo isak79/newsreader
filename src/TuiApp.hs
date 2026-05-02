@@ -107,6 +107,17 @@ renameMailbox ev = case ev of
     editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
 
 
+entryL :: Lens' TuiState Entry
+entryL = lens getter setter
+  where
+    getter ts =
+      let (_,box) = getCurrent $ mailBoxes ts
+      in getCurrent box
+    setter ts e =
+      let (name,box) = getCurrent $ mailBoxes ts
+          box'       = updateCurrentItem e box
+      in (ts {mailBoxes = updateCurrentItem (name,box') $ mailBoxes ts})
+
 renameFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> do
