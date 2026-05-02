@@ -548,7 +548,7 @@ drawMailBoxEntry ts curMb mb = a $ toView $ border $ padRight Max $ vBox [withAt
   where
     isCurrent = mb == curMb
     markCurrent :: AttrName
-    markCurrent = if (buttonPressed ts /= Button 'n') && isCurrent then greenAttr else blueAttr
+    markCurrent = if (not (buttonPressed ts == Button 'n' && currentDisplay ts == ShowMailboxList)) && isCurrent then greenAttr else blueAttr
     mbName
       | editMode = drawEditor ts addMailboxEditor
       | isCurrent && (buttonPressed ts == Button 'D') = withAttr warningAttr $ str "Press 'Y' to confirm deletion"
@@ -645,10 +645,11 @@ drawHelp ts = visible $ hCenterLayer $ hLimitPercent 50 $ borderWithLabel (str "
                                                 , ("_","abort") ]
 
                     (ShowMailboxList, None)  ->  [ ("q","quit")
-                                                 , ("j/<down>", "nextFeed")
-                                                 , ("k/<up>","prevFeed")
+                                                 , ("j/<down>", "nextMailbox")
+                                                 , ("k/<up>","prevMailbox")
                                                  , ("d","toggleShowUnread")
                                                  , ("<enter>","goToMailbox")
+                                                 , ("f","goToFeeds")
                                                  , ("D","deleteMailbox")
                                                  , ("r","refreshAll")
                                                  , ("g","goToTop")
