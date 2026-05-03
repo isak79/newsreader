@@ -396,6 +396,7 @@ safeFeeds = do
 buildState :: IO TuiState
 buildState = do
   mailboxes <- fillMailboxes
+  let empty = mailboxes == Zipper [] ("No mailbox", Zipper [] fallbackEntry []) []
   feeds     <- safeFeeds
   pure TuiState { currentDisplay   = ShowMailboxList
                 , warning          = Nothing
@@ -406,7 +407,8 @@ buildState = do
                 , addFeedEditor    = editorText AddFeedEditor (Just 1) $ T.pack ""
                 , addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack ""
                 , feedList         = M.fromJust $ fromList feeds
-                , newFeedUrl       = Nothing }
+                , newFeedUrl       = Nothing 
+                , emptyMailboxList   = empty }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
@@ -517,7 +519,8 @@ data TuiState = TuiState { currentDisplay   :: CurrentDisplay
                          , addFeedEditor    :: Editor T.Text ResourceName
                          , addMailboxEditor :: Editor T.Text ResourceName
                          , newFeedUrl       :: Maybe URL
-                         , feedList         :: Zipper (URL, MailboxName) }
+                         , feedList         :: Zipper (URL, MailboxName)
+                         , emptyMailboxList :: Bool }
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
