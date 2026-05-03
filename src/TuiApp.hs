@@ -20,6 +20,7 @@ import qualified Data.List as L
 import Lens.Micro
 import Data.Maybe (fromJust)
 import ParseNews
+import Control.Monad (when)
 
 
 blueAttr, greenAttr, yellowAttr, timeAttr, readAttr, warningAttr, defaultAttr :: AttrName
@@ -52,9 +53,7 @@ runApp = do
 handleTuiEvent :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleTuiEvent ev = do
   ts' <- get
-  if warning ts' /= Nothing
-    then modify (\s -> s { warning = Nothing })
-    else pure ()
+  when (M.isJust (warning ts')) $ modify (\s -> s { warning = Nothing })
   ts <- get
   case (currentDisplay ts,buttonPressed ts) of
     (ShowFeeds, Button 'n')       -> addFeed ev
@@ -65,6 +64,7 @@ handleTuiEvent ev = do
     _                             -> handleNormal ev
 
 
+handleDelete :: BrickEvent n e -> EventM ResourceName TuiState ()
 handleDelete ev = do
   ts <- get
   case (currentDisplay ts, ev) of
@@ -78,12 +78,11 @@ handleDelete ev = do
     (ShowMailboxList, VtyEvent (V.EvKey (V.KChar 'Y') [])) -> do
       let curMbName = fst $ getCurrent $ mailBoxes ts
       modify $ setButtonPressed None
-      if Prelude.any (\feed -> (snd feed) == curMbName) (feedList ts)
+      if Prelude.any (\feed -> snd feed == curMbName) (feedList ts)
         then modify  (\s -> s { warning = Just "Can not delete mailbox that subscribes to feeds" })
         else do
           deleteMailbox curMbName
           refillMailboxes
-      pure ()
     _                                              -> modify $ setButtonPressed None
 
 renameMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
@@ -123,7 +122,7 @@ renameFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> do
     modify $ setButtonPressed None
-    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) "" })
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let url         = T.strip . T.unlines . getEditContents $ addFeedEditor ts
@@ -132,7 +131,7 @@ renameFeed ev = case ev of
         newFeedList = updateCurrentItem (url, snd $ getCurrent fl) fl
     modify $ setNewFeedUrl (Just url)
     modify $ setButtonPressed None
-    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1)  "" })
     modify $ setFeedList newFeedList
     liftIO $ updateFeedUrl oldUrl url
   _      -> zoom editorStateL (handleEditorEvent ev)
@@ -154,7 +153,7 @@ addMailbox ev = case ev of
         modify $ setMailBoxes (add (name,Zipper [] fallbackEntry []) mb)
     insertMailbox name
     modify $ setButtonPressed None
-    modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack "" })
+    modify (\s -> s { addMailboxEditor = editorText AddMailboxEditor (Just 1) "" })
   _                              -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
@@ -164,13 +163,13 @@ addFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> do
     modify $ setButtonPressed None
-    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) "" })
   (VtyEvent (V.EvKey V.KEnter [])) -> do
     ts <- get
     let url = T.strip . T.unlines . getEditContents $ addFeedEditor ts
     modify $ setNewFeedUrl (Just url)
     modify $ setCurrentDisplay ChooseMailbox
-    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) $ T.pack "" })
+    modify (\s -> s { addFeedEditor = editorText AddFeedEditor (Just 1) "" })
   _                              -> zoom editorStateL (handleEditorEvent ev)
   where
     editorStateL = lens addFeedEditor (\s e -> s { addFeedEditor = e })
@@ -178,6 +177,7 @@ addFeed ev = case ev of
 -- | Handles keypresses when not in editor mode
 handleNormal :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 handleNormal (VtyEvent (V.EvKey (V.KChar 'q') [])) = halt
+handleNormal (VtyEvent (V.EvKey (V.KChar 'n') [])) = modify $ setButtonPressed (Button 'n')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'j') [])) = switchItem Next
 handleNormal (VtyEvent (V.EvKey (V.KChar 'k') [])) = switchItem Prev
 handleNormal (VtyEvent (V.EvKey V.KDown []))       = switchItem Next
@@ -202,7 +202,6 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'm') [])) = do
       modify $ setCurrentDisplay ChooseMailbox
       modify $ setButtonPressed (Button 'm')
     _           -> pure ()
-handleNormal (VtyEvent (V.EvKey (V.KChar 'n') [])) = modify $ setButtonPressed (Button 'n')
 handleNormal (VtyEvent (V.EvKey (V.KChar 'f') [])) = modify $ setCurrentDisplay ShowFeeds
 handleNormal (VtyEvent (V.EvKey (V.KChar 'e') [])) = do
   ts <- get
@@ -404,10 +403,10 @@ buildState = do
                 , showHelp         = False
                 , mailBoxes        = mailboxes
                 , buttonPressed    = None
-                , addFeedEditor    = editorText AddFeedEditor (Just 1) $ T.pack ""
-                , addMailboxEditor = editorText AddMailboxEditor (Just 1) $ T.pack ""
+                , addFeedEditor    = editorText AddFeedEditor (Just 1) ""
+                , addMailboxEditor = editorText AddMailboxEditor (Just 1) ""
                 , feedList         = M.fromJust $ fromList feeds
-                , newFeedUrl       = Nothing 
+                , newFeedUrl       = Nothing
                 , emptyMailboxList   = empty }
 
 -- | Fetch every feed, update database and memory
