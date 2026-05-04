@@ -19,11 +19,13 @@ data Entry = Entry {  title       :: T.Text
                     , article     :: Maybe Text }
                     deriving (Show, Eq)
 
+-- | Takes a URL, returns parsed entry
 parseFeed :: URL -> IO [Entry]
 parseFeed url = do
   feed <- fetchFeed url
   entries feed
 
+-- | Convert a feed Item into an Entry
 toEntry :: Item -> Maybe Entry
 toEntry i = do
   title0      <- getItemTitle i
@@ -39,6 +41,7 @@ cleanUrl t = case T.words t of
   (u:_) -> u
   []    -> T.empty
 
+-- | Backup entry, displayed in empty mailboxes
 fallbackEntry :: Entry
 fallbackEntry = Entry { title = T.pack "Nothing to show"
                       , source = T.pack "No url"

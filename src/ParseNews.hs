@@ -9,6 +9,7 @@ import Data.Maybe
 import qualified Data.Text as T
 import Data.List (nub)
 
+-- | Takes a url as argument, return the article contents
 handleNews :: T.Text -> IO T.Text
 handleNews url = do
   bytes <- fetchBytes url

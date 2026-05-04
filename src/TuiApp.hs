@@ -64,6 +64,7 @@ handleTuiEvent ev = do
     _                             -> handleNormal ev
 
 
+-- | Delete currently selected item, either a feed or a mailbox
 handleDelete :: BrickEvent n e -> EventM ResourceName TuiState ()
 handleDelete ev = do
   ts <- get
@@ -85,6 +86,8 @@ handleDelete ev = do
           refillMailboxes
     _                                              -> modify $ setButtonPressed None
 
+
+-- | Rename currently selected mailbox
 renameMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameMailbox ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> do
@@ -118,6 +121,7 @@ entryL = lens getter setter
           box'       = updateCurrentItem e box
       in (ts {mailBoxes = updateCurrentItem (name,box') $ mailBoxes ts})
 
+-- | Change url on currently selected feed
 renameFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 renameFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> do
@@ -139,6 +143,7 @@ renameFeed ev = case ev of
     editorStateL = lens addFeedEditor (\s e -> s { addFeedEditor = e })
 
 
+-- | Create a new mailbox, handles editor
 addMailbox :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addMailbox ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> modify $ setButtonPressed None
@@ -158,7 +163,7 @@ addMailbox ev = case ev of
   where
     editorStateL = lens addMailboxEditor (\s e -> s { addMailboxEditor = e })
 
--- | Handles the keypresses in editor mode, i.e. adding new mailboxes and feeds
+-- | Add a new feed, handles editor
 addFeed :: BrickEvent ResourceName e -> EventM ResourceName TuiState ()
 addFeed ev = case ev of
   (VtyEvent (V.EvKey V.KEsc [])) -> do
@@ -232,6 +237,7 @@ handleNormal (VtyEvent (V.EvKey (V.KChar 'D') [])) = do
     _         -> pure ()
 handleNormal _ = pure ()
 
+-- | Abort move feed, or add new feed
 abort :: EventM ResourceName TuiState ()
 abort = do
   cd <- gets currentDisplay
@@ -305,10 +311,10 @@ switchItem switchTo = do
       mailBoxesL :: Lens' TuiState MailBoxes
       mailBoxesL = lens mailBoxes (\s e -> s { mailBoxes = e })
 
--- | Either enter a mailbox, or if in one, open the entries link
 setNewFeedUrl :: Maybe URL -> TuiState -> TuiState
 setNewFeedUrl url ts = ts { newFeedUrl = url }
 
+-- | Active currently selected item
 activateItem :: EventM ResourceName TuiState ()
 activateItem = do
   curDisplay    <- gets currentDisplay
@@ -344,9 +350,8 @@ activateItem = do
 setCurrentDisplay :: CurrentDisplay -> TuiState -> TuiState
 setCurrentDisplay cd ts = ts { currentDisplay = cd }
 
--- | Open the current enties URL
 
--- | Update the read element of an entry to be either True or False
+-- | Mark currently selected entry as read or unread
 markEntry b = do
   mailBoxes   <- gets mailBoxes
   let currMailboxTuple = getCurrent mailBoxes
@@ -359,11 +364,10 @@ markEntry b = do
   liftIO $ readEntry b currEntry
   modify $ setMailBoxes newMailboxes
 
-
-
 setRead :: Bool -> Entry -> Entry
 setRead b e = e { isRead = b }
 
+-- | Open the current enties URL
 openUrl :: String -> IO ()
 openUrl url = case os of
   "darwin"  -> callProcess "open" [url]
@@ -385,6 +389,7 @@ setShowHelp b t = t { showHelp = b}
 setFeedList :: Zipper (URL, T.Text) -> TuiState -> TuiState
 setFeedList f ts = ts { feedList = f }
 
+-- | Fetch feeds from database, return fallback feed if empty response
 safeFeeds :: IO [(T.Text, T.Text)]
 safeFeeds = do
   feeds <- getFeeds
@@ -395,7 +400,6 @@ safeFeeds = do
 buildState :: IO TuiState
 buildState = do
   mailboxes <- fillMailboxes
-  let empty = mailboxes == Zipper [] ("No mailbox", Zipper [] fallbackEntry []) []
   feeds     <- safeFeeds
   pure TuiState { currentDisplay   = ShowMailboxList
                 , warning          = Nothing
@@ -406,8 +410,7 @@ buildState = do
                 , addFeedEditor    = editorText AddFeedEditor (Just 1) ""
                 , addMailboxEditor = editorText AddMailboxEditor (Just 1) ""
                 , feedList         = M.fromJust $ fromList feeds
-                , newFeedUrl       = Nothing
-                , emptyMailboxList   = empty }
+                , newFeedUrl       = Nothing }
 
 -- | Fetch every feed, update database and memory
 fillMailboxes :: IO MailBoxes
@@ -446,12 +449,15 @@ changeShowDesc = do
 data Zipper a = Zipper [a] a [a]
   deriving (Show, Functor, Eq, Foldable)
 
+-- | Intert some element `a` into `Zipper a`, place before currently selected element
 addBeforeCurrent :: a -> Zipper a -> Zipper a
 addBeforeCurrent a (Zipper as b cs) = Zipper (a:as) b cs
 
+-- | Takes in predicate `(a -> Bool)`, `a`, and `Zipper a`, replace every occurence in `Zipper a` where predicate is fullfilled
 updateElem :: (a -> Bool) -> a -> Zipper a -> Zipper a
 updateElem f element = fmap (\a -> if f a then element else a)
 
+-- | Return number of items fullfilling predicate
 countMatching :: (a -> Bool) -> Zipper a -> Int
 countMatching func (Zipper as b cs) = length $ filter func $ as <> [b] <> cs
 
@@ -459,13 +465,14 @@ countMatching func (Zipper as b cs) = length $ filter func $ as <> [b] <> cs
 unsnoc :: [a] -> Maybe ([a], a)
 unsnoc   = foldr (\x -> Just . maybe ([], x) (\(~(a, b)) -> (x : a, b))) Nothing
 
+-- | Returns first item in Zipper
 firstItem :: Zipper a -> Zipper a
 firstItem z@(Zipper [] _ _) = z
 firstItem (Zipper xs y zs)  = Zipper [] r (reverse h ++ y:zs)
   where
     (h,r) = M.fromJust $ unsnoc xs
 
-
+-- | Returns last item in Zipper
 lastItem :: Zipper a -> Zipper a
 lastItem z@(Zipper _ _ []) = z
 lastItem (Zipper xs y zs)  = Zipper (reverse h ++ y:xs) r []
@@ -499,7 +506,6 @@ add a (Zipper as b cs) = Zipper as b (cs <> [a])
 
 
 type MailboxName = T.Text
-type Article     = T.Text
 type Mailbox     = Zipper Entry
 type MailBoxes   = Zipper (MailboxName, Mailbox)
 
@@ -509,25 +515,27 @@ data CurrentDisplay = ShowMailboxList | ShowEntries | ShowFeeds | ChooseMailbox 
 data ButtonPressed x = Button x | None
   deriving Eq
 
-data TuiState = TuiState { currentDisplay   :: CurrentDisplay
-                         , showDesc         :: Bool
-                         , showHelp         :: Bool
-                         , mailBoxes        :: MailBoxes
-                         , warning          :: Maybe T.Text
-                         , buttonPressed    :: ButtonPressed Char
-                         , addFeedEditor    :: Editor T.Text ResourceName
-                         , addMailboxEditor :: Editor T.Text ResourceName
-                         , newFeedUrl       :: Maybe URL
-                         , feedList         :: Zipper (URL, MailboxName)
-                         , emptyMailboxList :: Bool }
+data TuiState = TuiState { currentDisplay   :: CurrentDisplay              -- ^ Which zipper is being displayed
+                         , showDesc         :: Bool                        -- ^ Show entry description, or number of unread items in a mailbox
+                         , showHelp         :: Bool                        -- ^ Display help menu
+                         , mailBoxes        :: MailBoxes                   -- ^ Structure containing mailboxes and entries
+                         , warning          :: Maybe T.Text                -- ^ Display warning
+                         , buttonPressed    :: ButtonPressed Char          -- ^ Whether 'e', 'n', or 'm' have been pressed
+                         , addFeedEditor    :: Editor T.Text ResourceName  -- ^ Editor regarding everything with feed
+                         , addMailboxEditor :: Editor T.Text ResourceName  -- ^ Editor regarding everything with mailbox
+                         , newFeedUrl       :: Maybe URL                   -- ^ Used to hold the URL of an RSS/Atom feed, used when moving feed, or adding a new one
+                         , feedList         :: Zipper (URL, MailboxName) }   -- ^ Tuples of feeds you are subscribed to, and which mailbox they belong to
+                         
 
 
 setMailBoxes :: MailBoxes -> TuiState -> TuiState
 setMailBoxes mb ts = ts { mailBoxes = mb }
 
+-- | Draw an editor
 drawEditor :: TuiState -> (TuiState -> Editor T.Text ResourceName) -> Widget ResourceName
 drawEditor ts editor' = visible $ renderEditor (txt . T.unlines) True (editor' ts)
 
+-- | Takes in the TuiState, draws the relevant tui
 drawTui :: TuiState -> [Widget ResourceName]
 drawTui ts = [toDraw]
     where
@@ -538,15 +546,11 @@ drawTui ts = [toDraw]
         ChooseMailbox   -> drawMailboxesList ts
         ShowArticle     -> drawArticle ts
 
-
-
 drawArticle :: TuiState -> Widget n
 drawArticle ts =
   let currEntry = getCurrent $ snd $ getCurrent $ mailBoxes ts
       art = M.fromMaybe "" (article currEntry)
   in txt art
-
-
 
 drawFeedList :: TuiState -> Widget ResourceName
 drawFeedList ts = viewport FeedsViewport Vertical
